@@ -122,7 +122,7 @@ DEFUN (test_interface_state,
   if (ifp->ifindex == IFINDEX_INTERNAL)
     {
       ifp->ifindex = ++test_ifindex;
-      ifp->mtu = 1500;
+      ifp->mtu = 60000;
       ifp->flags = IFF_BROADCAST|IFF_MULTICAST;
     }
   

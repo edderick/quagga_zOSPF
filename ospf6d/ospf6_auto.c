@@ -229,9 +229,12 @@ ospf6_check_router_id (struct ospf6_header *oh,
       {
 	/* Multiple interfaces on same link? */
 	/* Draft doesn't specify _HOW_ this should be done */
-	if (IPV6_ADDR_SAME (&src, inf->linklocal_addr))
-	{
-	  return;
+	if (inf->linklocal_addr != NULL) 
+        { 
+          if (IPV6_ADDR_SAME (&src, inf->linklocal_addr))
+	  {
+	    return;
+	  }
 	}
       }
     }
@@ -281,7 +284,7 @@ ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header)
 	(struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_tlv_header;
 
       /* Check fingerprints, check length first since its variable */
-      if (ac_tlv_header->length == 32
+      if (ac_tlv_header->length == 64
 	  && R_HW_FP_CMP (&ac_tlv_rhfp->value, &fingerprint) == 0)
       {
 	/* Matching fingerprints implies true self origination*/
@@ -290,7 +293,7 @@ ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header)
       else 
       {
 	/* If their fingerprint is smaller */
-	if (ac_tlv_header->length <= 32 
+	if (ac_tlv_header->length <= 64 
 	    && R_HW_FP_CMP (&ac_tlv_rhfp->value, &fingerprint) < 0)
 	{
 	  zlog_warn ("Other router must change Router-ID");
@@ -625,14 +628,18 @@ create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb,
 
   current_lsa = ospf6_lsdb_type_head (htons (OSPF6_LSTYPE_AC), lsdb);
 
+  zlog_warn("snapping");
+  
   while (current_lsa != NULL) 
   {
     struct ospf6_ac_lsa * ac_lsa;
     char *start, *end, *current;
     u_int32_t *rid;
 
+
     if (!current_lsa->reachable) 
     {
+      zlog_warn("NOT REACHABLE");
       current_lsa = ospf6_lsdb_type_next (htons (OSPF6_LSTYPE_AC), current_lsa);
       continue;
     }
@@ -654,9 +661,12 @@ create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb,
     {
       struct ospf6_ac_tlv_header *ac_tlv_header = 
 	(struct ospf6_ac_tlv_header *) current;
+	
+	zlog_warn("LSA");
 
       if (ac_tlv_header->type == htons(OSPF6_AC_TLV_AGGREGATED_PREFIX))
       {
+	zlog_warn("Agg");
 	struct ospf6_aggregated_prefix *ag_prefix;
 	ag_prefix = handle_aggregated_prefix_tlv (current, current_lsa);
 	listnode_add (*aggregated_prefix_list, ag_prefix);
@@ -667,7 +677,7 @@ create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb,
 	as_prefix = handle_assigned_prefix_tlv(current, current_lsa);
 	listnode_add (*assigned_prefix_list, as_prefix);
       } 
-      current += sizeof (struct ospf6_ac_tlv_header) + ntohs (ac_tlv_header->length);
+      current += sizeof (struct ospf6_ac_tlv_header) + ((ntohs (ac_tlv_header->length) + 4 - 1) / 4) * 4;
     }    
 
     current_lsa = ospf6_lsdb_type_next (htons (OSPF6_LSTYPE_AC), current_lsa);
@@ -1842,6 +1852,8 @@ ospf6_assign_prefixes (void)
 {
   struct ospf6_area *backbone_area;
   struct list *assigned_prefix_list, *aggregated_prefix_list, *reachable_rid_list;
+
+  zlog_warn("Runnign assignment algorithm");
 
   /* OSPFv3 Autoconf only runs on the backbone */
   backbone_area = ospf6_area_lookup (0, ospf6);

@@ -748,10 +748,10 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
 	vty_out (vty, "        Length: %d%s", ntohs (nested->header.length), VNL);
 	vty_out (vty, "        Prefix: %s%s", prefix_str, VNL);
 
-	nested += sizeof (struct ospf6_ac_tlv_header) + ntohs (nested->header.length);
+	nested += sizeof (struct ospf6_ac_tlv_header) + ((ntohs (nested->header.length) + 4 - 1) / 4) * 4;
       }
 
-      current += sizeof (struct ospf6_ac_tlv_header) + ntohs (ac_tlv_header->length);
+      current += sizeof (struct ospf6_ac_tlv_header) + ((ntohs (ac_tlv_header->length) + 4 -1) / 4) * 4;
     }
     else
     {

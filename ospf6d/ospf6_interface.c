@@ -128,7 +128,7 @@ ospf6_interface_create (struct interface *ifp)
 
   /* Try to adjust I/O buffer size with IfMtu */
   oi->ifmtu = ifp->mtu6;
-  iobuflen = ospf6_iobuf_size (ifp->mtu6);
+  iobuflen = ospf6_iobuf_size (60000);
   if (oi->ifmtu > iobuflen)
     {
       if (IS_OSPF6_DEBUG_INTERFACE)
@@ -264,7 +264,7 @@ ospf6_interface_if_add (struct interface *ifp)
   /* Try to adjust I/O buffer size with IfMtu */
   if (oi->ifmtu == 0)
     oi->ifmtu = ifp->mtu6;
-  iobuflen = ospf6_iobuf_size (ifp->mtu6);
+  iobuflen = ospf6_iobuf_size (60000);
   if (oi->ifmtu > iobuflen)
     {
       if (IS_OSPF6_DEBUG_INTERFACE)
@@ -1065,7 +1065,7 @@ DEFUN (ipv6_ospf6_ifmtu,
 
   if (oi->ifmtu < ifmtu)
     {
-      iobuflen = ospf6_iobuf_size (ifmtu);
+      iobuflen = ospf6_iobuf_size (60000);
       if (iobuflen < ifmtu)
         {
           vty_out (vty, "%s's ifmtu is adjusted to I/O buffer size (%d).%s",
@@ -1113,7 +1113,7 @@ DEFUN (no_ipv6_ospf6_ifmtu,
 
   if (oi->ifmtu < ifp->mtu)
     {
-      iobuflen = ospf6_iobuf_size (ifp->mtu);
+      iobuflen = ospf6_iobuf_size (60000);
       if (iobuflen < ifp->mtu)
         {
           vty_out (vty, "%s's ifmtu is adjusted to I/O buffer size (%d).%s",

@@ -67,7 +67,7 @@
 
 #define IRDP_LAST_ADVERT_MESSAGES 2 /* The last adverts with Holdtime 0 */
 
-#define IRDP_RX_BUF 1500
+#define IRDP_RX_BUF 60000
 
 /* 
      Comments comes from RFC1256 ICMP Router Discovery Messages. 
