@@ -154,7 +154,7 @@ ospf6_set_router_id (u_int32_t rid)
     {
       if (if_is_up (current_interface) && !if_is_loopback(current_interface))
       {
-	create_ospf6_interface (current_interface->name);
+		  create_ospf6_interface (current_interface->name);
       }
     }
   }
