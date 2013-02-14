@@ -46,6 +46,78 @@ struct zclient *zclient = NULL;
 
 struct in_addr router_id_zebra;
 
+/* TODO: Move somewhere more appropriate */
+/* Compatibility with pre C99? */
+typedef unsigned long long int u_int64_t;
+
+/* Convert a transmission order MAC address to storage order */
+static u_int64_t
+hw_addr_to_long (u_char *hw_addr, int hw_addr_len)
+{
+	u_int64_t total = 0;
+	int i;
+	
+	for (i = hw_addr_len - 1; i >= 0; i--)
+	{
+		total *= 256;
+		total += hw_addr[i];
+
+		/*zlog_warn("%llu, %d", total, hw_addr[i]);*/
+	}
+
+	return total;
+}
+
+/* Can be replaced with a more complex hash if needed */
+static u_int32_t 
+hash_hw_addr (u_int64_t hw_addr)
+{
+	return hw_addr % UINT32_MAX;
+}
+
+/* Generate a Router Hardware Fingerprint for zOSPF */
+static u_int32_t 
+ospf6_router_hardware_fingerprint ()
+{
+	struct listnode *node;
+	int i;
+	u_int32_t fingerprint = 0;
+
+	node = iflist->head;
+
+	for (i = 0; i < iflist->count; i++) {
+		struct interface *current_interface = listgetdata(node);
+		#ifdef HAVE_STRUCT_SOCKADDR_DL
+			/* TODO Add support for STRUCT_SOCKADDR_DL */
+			fingerprint = fingerprint + LLADDR(current_interface->sdl);
+			fingerprint = 1;
+		#else
+			/* u_char hw_addr[INTERFACE_HWADDR_MAX]; <]
+			[> fingerprint = fingerprint + current_interface->hw_addr_len; */
+			/*zlog_warn("Interface: %s", current_interface->name);*/
+			/*zlog_warn("Running: %d", if_is_up(current_interface));*/
+			/*zlog_warn("HW_ADDR: %llu", hw_addr_to_long(current_interface->hw_addr, current_interface->hw_addr_len));*/
+			if (if_is_up (current_interface) && !if_is_loopback(current_interface))
+			{
+				fingerprint += hash_hw_addr (hw_addr_to_long (current_interface->hw_addr, 
+									current_interface->hw_addr_len));
+			}
+		#endif /* HAVE_STRUCT_SOCKADDR_DL */
+		node = listnextnode(node);
+	}
+	
+	zlog_warn("Finger: %lu", fingerprint);	
+	return fingerprint;
+} 
+
+/* TODO Add a parameter for fingerprint? */
+static u_int32_t 
+generate_router_id () 
+{
+	srand(ospf6_router_hardware_fingerprint ());
+	return rand();
+}
+
 /* Router-id update message from zebra. */
 static int
 ospf6_router_id_update_zebra (int command, struct zclient *zclient,
@@ -61,8 +133,13 @@ ospf6_router_id_update_zebra (int command, struct zclient *zclient,
     return 0;
 
   if (o->router_id  == 0)
-    o->router_id = (u_int32_t) router_id_zebra.s_addr;
-
+  {
+     o->router_id = generate_router_id ();
+     /* Not sure if needed */
+     o->router_id_static = o->router_id;
+   }
+   /*o->router_id = (u_int32_t) router_id_zebra.s_addr; */
+  
   return 0;
 }
 
