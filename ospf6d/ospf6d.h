@@ -26,6 +26,7 @@
 
 /* global variables */
 extern struct thread_master *master;
+extern int auto_conf;
 
 #ifdef INRIA_IPV6
 #ifndef IPV6_PKTINFO

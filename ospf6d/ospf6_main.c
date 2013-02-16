@@ -97,6 +97,9 @@ char *progname;
 /* is daemon? */
 int daemon_mode = 0;
 
+/* is autoconf? */
+int auto_conf = 0; 
+
 /* Master of threads. */
 struct thread_master *master;
 
@@ -114,6 +117,7 @@ usage (char *progname, int status)
       printf ("Usage : %s [OPTION...]\n\n\
 Daemon which manages OSPF version 3.\n\n\
 -d, --daemon       Runs in daemon mode\n\
+-a, --auto_conf    Autoconfigures OSPF\n\
 -f, --config_file  Set configuration file name\n\
 -i, --pid_file     Set process identifier file name\n\
 -z, --socket       Set path of zebra socket\n\
@@ -234,7 +238,7 @@ main (int argc, char *argv[], char *envp[])
   /* Command line argument treatment. */
   while (1) 
     {
-      opt = getopt_long (argc, argv, "df:i:z:hp:A:P:u:g:vC", longopts, 0);
+      opt = getopt_long (argc, argv, "df:i:z:hp:A:P:u:g:vC:a", longopts, 0);
     
       if (opt == EOF)
         break;
@@ -286,6 +290,9 @@ main (int argc, char *argv[], char *envp[])
         case 'h':
           usage (progname, 0);
           break;
+	case 'a':
+	  auto_conf = 1;
+	  break;
         default:
           usage (progname, 1);
           break;
