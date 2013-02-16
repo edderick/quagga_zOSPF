@@ -2,11 +2,16 @@
 
 #include "linklist.h"
 #include "thread.h"
+#include "vty.h"
 
-#include "ospf6_auto.h"
 #include "ospf6_top.h"
 #include "ospf6_interface.h"
+#include "ospf6_area.h"
+#include "ospf6_auto.h"
 #include "ospf6d.h"
+
+/* Proto */
+static void create_if (char * name);
 
 /* Convert a transmission order MAC address to storage order */
 static u_int64_t
@@ -58,6 +63,7 @@ ospf6_router_hardware_fingerprint ()
         }
 
         zlog_warn("Fingerprint: %lu", fingerprint);
+
         return fingerprint;
 }
 
@@ -80,12 +86,79 @@ void ospf6_set_router_id (u_int32_t rid){
 		t = next;
 	}
 
-	ospf6_delete(ospf6);
+	if (ospf6 != NULL) 
+		ospf6_delete (ospf6);
 
 	/* Reconfigure */
-	/* TODO: AUTO CONFIGURE :) */
-	vty_read_config (NULL, "/usr/local/quagga/ospf6d.conf");
+	if (!auto_conf) 
+	{	
+		vty_read_config (NULL, "/usr/local/quagga/ospf6d.conf");
+	}
+	else 
+	{
+		ospf6 = ospf6_create ();
+		ospf6_enable (ospf6);
 
+		struct listnode *node;
+        	int i;
+
+        	node = iflist->head;
+
+		/* TODO: I think this currently depends on the config file to put the interfaces up..? */
+        	for (i = 0; i < iflist->count; i++) {
+                	struct interface *current_interface = listgetdata(node);
+                        if (if_is_up (current_interface) && !if_is_loopback(current_interface))
+                        {
+                        	create_if (current_interface->name);
+			}
+                	node = listnextnode(node);
+        	}
+
+
+		
+	}
+	
 	ospf6->router_id = rid; 
 	ospf6->router_id_static = rid;
+
 }
+
+/* A copy of ospf_interface_area_cmd */
+static void create_if (char * name)
+{
+struct ospf6 *o;
+struct ospf6_area *oa;
+struct ospf6_interface *oi;
+struct interface *ifp;
+u_int32_t area_id;
+
+o = ospf6;
+
+/* find/create ospf6 interface */
+ifp = if_get_by_name (name);
+oi = (struct ospf6_interface *) ifp->info;
+if (oi == NULL)
+  oi = ospf6_interface_create (ifp);
+
+area_id = 0; 
+
+/* find/create ospf6 area */
+oa = ospf6_area_lookup (area_id, o);
+if (oa == NULL)
+  oa = ospf6_area_create (area_id, o);
+
+/* attach interface to area */
+listnode_add (oa->if_list, oi); /* sort ?? */
+oi->area = oa;
+
+SET_FLAG (oa->flag, OSPF6_AREA_ENABLE);
+
+/* start up */
+thread_add_event (master, interface_up, oi, 0);
+
+/* If the router is ABR, originate summary routes */
+if (ospf6_is_router_abr (o))
+  ospf6_abr_enable_area (oa);
+
+}
+
