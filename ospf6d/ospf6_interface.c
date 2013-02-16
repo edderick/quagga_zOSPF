@@ -154,6 +154,12 @@ ospf6_interface_delete (struct ospf6_interface *oi)
   struct listnode *node, *nnode;
   struct ospf6_neighbor *on;
 
+  /* Probably in the wrong place */
+  /* Cancel threads and close interface? */
+  thread_cancel_event(master, oi);
+  if (oi->state > OSPF6_INTERFACE_DOWN)
+    ospf6_sso (oi->interface->ifindex, &allspfrouters6, IPV6_LEAVE_GROUP);
+
   for (ALL_LIST_ELEMENTS (oi->neighbor_list, node, nnode, on))
       ospf6_neighbor_delete (on);
   

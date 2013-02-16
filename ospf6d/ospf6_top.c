@@ -167,6 +167,8 @@ ospf6_delete (struct ospf6 *o)
   route_table_finish (o->external_id_table);
 
   XFREE (MTYPE_OSPF6_TOP, o);
+  /* TODO Fix this */
+  ospf6 = NULL;
 }
 
 static void
