@@ -783,9 +783,9 @@ ospf6_ac_lsa_originate (struct thread *thread)
       /*[> Broadcast and NBMA interfaces <]*/
       /*if (if_is_broadcast (oi->interface))*/
         /*{*/
-          /*/* If this router is not DR,*/
+          /*[> If this router is not DR,*/
              /*and If this router not fully adjacent with DR,*/
-             /*this interface is not transit yet: ignore. */*/
+             /*this interface is not transit yet: ignore. <]*/
           /*if (oi->state != OSPF6_INTERFACE_DR)*/
             /*{*/
               /*drouter = ospf6_neighbor_lookup (oi->drouter, oi);*/
