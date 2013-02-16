@@ -111,7 +111,7 @@ ospf6_top_brouter_hook_remove (struct ospf6_route *route)
   ospf6_abr_originate_summary (route);
 }
 
-static struct ospf6 *
+struct ospf6 *
 ospf6_create (void)
 {
   struct ospf6 *o;
@@ -171,7 +171,7 @@ ospf6_delete (struct ospf6 *o)
   ospf6 = NULL;
 }
 
-static void
+void
 ospf6_enable (struct ospf6 *o)
 {
   struct listnode *node, *nnode;
@@ -705,5 +705,3 @@ ospf6_top_init (void)
   install_element (OSPF6_NODE, &ospf6_interface_area_cmd);
   install_element (OSPF6_NODE, &no_ospf6_interface_area_cmd);
 }
-
-
