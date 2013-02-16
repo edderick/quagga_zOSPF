@@ -71,8 +71,6 @@ generate_router_id ()
 
 /* Shuts down router and restarts it with new router-id */
 void ospf6_set_router_id (u_int32_t rid){
-	ospf6_delete(ospf6);
-
 	/* Remove all timers */
 	struct thread *t = master->timer.head;
 	for(int i = 0; i < master->timer.count; i++){
@@ -81,6 +79,8 @@ void ospf6_set_router_id (u_int32_t rid){
 		thread_cancel(t);
 		t = next;
 	}
+
+	ospf6_delete(ospf6);
 
 	/* Reconfigure */
 	/* TODO: AUTO CONFIGURE :) */
