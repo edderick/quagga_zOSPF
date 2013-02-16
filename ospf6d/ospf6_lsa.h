@@ -62,6 +62,8 @@
 #define OSPF6_LSTYPE_LINK             0x0008
 #define OSPF6_LSTYPE_INTRA_PREFIX     0x2009
 #define OSPF6_LSTYPE_SIZE             0x000a
+/* Auto-configuration LSA */
+#define OSPF6_LSTYPE_AC               0xBFF0
 
 /* Masks for LS Type : RFC 2740 A.4.2.1 "LS type" */
 #define OSPF6_LSTYPE_UBIT_MASK        0x8000

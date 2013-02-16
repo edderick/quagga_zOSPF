@@ -135,6 +135,24 @@ struct ospf6_link_lsa
   /* followed by ospf6 prefix(es) */
 };
 
+/* Auto-Configuration-LSA */
+#define OSPF6_AC_LSA_MIN_SIZE             4U
+struct ospf6_ac_lsa
+{
+  /* followed by tlv(s) */
+};
+
+/* Type-Length-Value */
+#define OSPF6_TLV_MIN_SIZE		4U
+struct ospf6_ac_tlv 
+{
+  u_int16_t type;
+  u_int16_t length;
+  /* followed by value */
+};
+
+#define OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT       1
+
 /* Intra-Area-Prefix-LSA */
 #define OSPF6_INTRA_PREFIX_LSA_MIN_SIZE       12U /* w/o 1st IPv6 prefix */
 struct ospf6_intra_prefix_lsa

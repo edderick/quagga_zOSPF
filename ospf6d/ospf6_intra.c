@@ -611,6 +611,261 @@ ospf6_link_lsa_originate (struct thread *thread)
 }
 
 
+
+
+/***************************************/
+/* draft-ietf-ospf-ospfv3-autoconfig-00
+ * 5.2.1 Auto-Configuration-LSA        */
+/***************************************/
+
+static int
+ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
+{
+  char *start, *end, *current;
+  char buf[32], name[32];
+  struct ospf6_ac_lsa *ac_lsa;
+  struct ospf6_ac_tlv *ac_tlv;
+
+  ac_lsa = (struct ospf6_ac_lsa *)
+    ((char *) lsa->header + sizeof (struct ospf6_lsa_header));
+
+  /* Start and end of all TLVs */
+  start = (char *) ac_lsa + sizeof (struct ospf6_ac_lsa);
+  end = (char *) lsa->header + ntohs (lsa->header->length);
+  
+  for (current = start; current + ac_tlv->length <= end;
+       current += ac_tlv->length)
+    {
+      ac_tlv = (struct ospf6_ac_tlv *) current;
+
+      if (ac_tlv->type == OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT)
+        snprintf (name, sizeof (name), "Router-Hardware-Fingerprint");
+
+      vty_out (vty, "    Type: %s Length: %d%s",
+               name, ntohs (ac_tlv->length), VNL);
+     
+      /* TODO: Check this pointer logic and handle different TLVs */
+      vty_out (vty, "    Value: %li%s",
+                *((u_int32_t *) (ac_tlv + sizeof (struct ospf6_ac_tlv))), VNL);
+    }
+  return 0;
+}
+
+int
+ospf6_ac_lsa_originate (struct thread *thread)
+{
+  /* TODO: Implement this ;) */
+  /*struct ospf6_area *oa;*/
+
+  /*char buffer [OSPF6_MAX_LSASIZE];*/
+  /*struct ospf6_lsa_header *lsa_header;*/
+  /*struct ospf6_lsa *lsa;*/
+
+  /*u_int32_t link_state_id = 0;*/
+  /*struct listnode *node, *nnode;*/
+  /*struct listnode *j;*/
+  /*struct ospf6_interface *oi;*/
+  /*struct ospf6_neighbor *on, *drouter = NULL;*/
+  /*struct ospf6_router_lsa *router_lsa;*/
+  /*struct ospf6_router_lsdesc *lsdesc;*/
+  /*u_int16_t type;*/
+  /*u_int32_t router;*/
+  /*int count;*/
+
+  /*oa = (struct ospf6_area *) THREAD_ARG (thread);*/
+  /*oa->thread_router_lsa = NULL;*/
+
+  /*if (IS_OSPF6_DEBUG_ORIGINATE (ROUTER))*/
+    /*zlog_debug ("Originate Router-LSA for Area %s", oa->name);*/
+
+  /*memset (buffer, 0, sizeof (buffer));*/
+  /*lsa_header = (struct ospf6_lsa_header *) buffer;*/
+  /*router_lsa = (struct ospf6_router_lsa *)*/
+    /*((caddr_t) lsa_header + sizeof (struct ospf6_lsa_header));*/
+
+  /*OSPF6_OPT_SET (router_lsa->options, OSPF6_OPT_V6);*/
+  /*OSPF6_OPT_SET (router_lsa->options, OSPF6_OPT_E);*/
+  /*OSPF6_OPT_CLEAR (router_lsa->options, OSPF6_OPT_MC);*/
+  /*OSPF6_OPT_CLEAR (router_lsa->options, OSPF6_OPT_N);*/
+  /*OSPF6_OPT_SET (router_lsa->options, OSPF6_OPT_R);*/
+  /*OSPF6_OPT_CLEAR (router_lsa->options, OSPF6_OPT_DC);*/
+
+  /*if (ospf6_is_router_abr (ospf6))*/
+    /*SET_FLAG (router_lsa->bits, OSPF6_ROUTER_BIT_B);*/
+  /*else*/
+    /*UNSET_FLAG (router_lsa->bits, OSPF6_ROUTER_BIT_B);*/
+  /*if (ospf6_asbr_is_asbr (ospf6))*/
+    /*SET_FLAG (router_lsa->bits, OSPF6_ROUTER_BIT_E);*/
+  /*else*/
+    /*UNSET_FLAG (router_lsa->bits, OSPF6_ROUTER_BIT_E);*/
+  /*UNSET_FLAG (router_lsa->bits, OSPF6_ROUTER_BIT_V);*/
+  /*UNSET_FLAG (router_lsa->bits, OSPF6_ROUTER_BIT_W);*/
+
+  /*[> describe links for each interfaces <]*/
+  /*lsdesc = (struct ospf6_router_lsdesc *)*/
+    /*((caddr_t) router_lsa + sizeof (struct ospf6_router_lsa));*/
+
+  /*for (ALL_LIST_ELEMENTS (oa->if_list, node, nnode, oi))*/
+    /*{*/
+      /*[> Interfaces in state Down or Loopback are not described <]*/
+      /*if (oi->state == OSPF6_INTERFACE_DOWN ||*/
+          /*oi->state == OSPF6_INTERFACE_LOOPBACK)*/
+        /*continue;*/
+
+      /*[> Nor are interfaces without any full adjacencies described <]*/
+      /*count = 0;*/
+      /*for (ALL_LIST_ELEMENTS_RO (oi->neighbor_list, j, on))*/
+        /*if (on->state == OSPF6_NEIGHBOR_FULL)*/
+          /*count++;*/
+      
+      /*if (count == 0)*/
+        /*continue;*/
+
+      /*[> Multiple Router-LSA instance according to size limit setting <]*/
+      /*if ( (oa->router_lsa_size_limit != 0)*/
+          /*&& ((caddr_t) lsdesc + sizeof (struct ospf6_router_lsdesc) -*/
+	      /*[> XXX warning: comparison between signed and unsigned <]*/
+              /*(caddr_t) buffer > oa->router_lsa_size_limit))*/
+        /*{*/
+          /*if ((caddr_t) lsdesc == (caddr_t) router_lsa +*/
+                                  /*sizeof (struct ospf6_router_lsa))*/
+            /*{*/
+              /*if (IS_OSPF6_DEBUG_ORIGINATE (ROUTER))*/
+                /*zlog_debug ("Size limit setting for Router-LSA too short");*/
+              /*return 0;*/
+            /*}*/
+
+          /*[> Fill LSA Header <]*/
+          /*lsa_header->age = 0;*/
+          /*lsa_header->type = htons (OSPF6_LSTYPE_ROUTER);*/
+          /*lsa_header->id = htonl (link_state_id);*/
+          /*lsa_header->adv_router = oa->ospf6->router_id;*/
+          /*lsa_header->seqnum =*/
+            /*ospf6_new_ls_seqnum (lsa_header->type, lsa_header->id,*/
+                                 /*lsa_header->adv_router, oa->lsdb);*/
+          /*lsa_header->length = htons ((caddr_t) lsdesc - (caddr_t) buffer);*/
+
+          /*[> LSA checksum <]*/
+          /*ospf6_lsa_checksum (lsa_header);*/
+
+          /*[> create LSA <]*/
+          /*lsa = ospf6_lsa_create (lsa_header);*/
+
+          /*[> Originate <]*/
+          /*ospf6_lsa_originate_area (lsa, oa);*/
+
+          /*[> Reset setting for consecutive origination <]*/
+          /*memset ((caddr_t) router_lsa + sizeof (struct ospf6_router_lsa),*/
+                  /*0, (caddr_t) lsdesc - (caddr_t) router_lsa);*/
+          /*lsdesc = (struct ospf6_router_lsdesc *)*/
+            /*((caddr_t) router_lsa + sizeof (struct ospf6_router_lsa));*/
+          /*link_state_id ++;*/
+        /*}*/
+
+      /*[> Point-to-Point interfaces <]*/
+      /*if (if_is_pointopoint (oi->interface))*/
+        /*{*/
+          /*for (ALL_LIST_ELEMENTS_RO (oi->neighbor_list, j, on))*/
+            /*{*/
+              /*if (on->state != OSPF6_NEIGHBOR_FULL)*/
+                /*continue;*/
+
+              /*lsdesc->type = OSPF6_ROUTER_LSDESC_POINTTOPOINT;*/
+              /*lsdesc->metric = htons (oi->cost);*/
+              /*lsdesc->interface_id = htonl (oi->interface->ifindex);*/
+              /*lsdesc->neighbor_interface_id = htonl (on->ifindex);*/
+              /*lsdesc->neighbor_router_id = on->router_id;*/
+
+              /*lsdesc++;*/
+            /*}*/
+        /*}*/
+
+      /*[> Broadcast and NBMA interfaces <]*/
+      /*if (if_is_broadcast (oi->interface))*/
+        /*{*/
+          /*/* If this router is not DR,*/
+             /*and If this router not fully adjacent with DR,*/
+             /*this interface is not transit yet: ignore. */*/
+          /*if (oi->state != OSPF6_INTERFACE_DR)*/
+            /*{*/
+              /*drouter = ospf6_neighbor_lookup (oi->drouter, oi);*/
+              /*if (drouter == NULL || drouter->state != OSPF6_NEIGHBOR_FULL)*/
+                /*continue;*/
+            /*}*/
+
+          /*lsdesc->type = OSPF6_ROUTER_LSDESC_TRANSIT_NETWORK;*/
+          /*lsdesc->metric = htons (oi->cost);*/
+          /*lsdesc->interface_id = htonl (oi->interface->ifindex);*/
+          /*if (oi->state != OSPF6_INTERFACE_DR)*/
+            /*{*/
+              /*lsdesc->neighbor_interface_id = htonl (drouter->ifindex);*/
+              /*lsdesc->neighbor_router_id = drouter->router_id;*/
+            /*}*/
+          /*else*/
+            /*{*/
+              /*lsdesc->neighbor_interface_id = htonl (oi->interface->ifindex);*/
+              /*lsdesc->neighbor_router_id = oi->area->ospf6->router_id;*/
+            /*}*/
+
+          /*lsdesc++;*/
+        /*}*/
+
+      /*[> Virtual links <]*/
+        /*[> xxx <]*/
+      /*[> Point-to-Multipoint interfaces <]*/
+        /*[> xxx <]*/
+    /*}*/
+
+  /*if ((caddr_t) lsdesc != (caddr_t) router_lsa +*/
+                          /*sizeof (struct ospf6_router_lsa))*/
+    /*{*/
+      /*[> Fill LSA Header <]*/
+      /*lsa_header->age = 0;*/
+      /*lsa_header->type = htons (OSPF6_LSTYPE_ROUTER);*/
+      /*lsa_header->id = htonl (link_state_id);*/
+      /*lsa_header->adv_router = oa->ospf6->router_id;*/
+      /*lsa_header->seqnum =*/
+        /*ospf6_new_ls_seqnum (lsa_header->type, lsa_header->id,*/
+                             /*lsa_header->adv_router, oa->lsdb);*/
+      /*lsa_header->length = htons ((caddr_t) lsdesc - (caddr_t) buffer);*/
+
+      /*[> LSA checksum <]*/
+      /*ospf6_lsa_checksum (lsa_header);*/
+
+      /*[> create LSA <]*/
+      /*lsa = ospf6_lsa_create (lsa_header);*/
+
+      /*[> Originate <]*/
+      /*ospf6_lsa_originate_area (lsa, oa);*/
+
+      /*link_state_id ++;*/
+    /*}*/
+  /*else*/
+    /*{*/
+      /*if (IS_OSPF6_DEBUG_ORIGINATE (ROUTER))*/
+        /*zlog_debug ("Nothing to describe in Router-LSA, suppress");*/
+    /*}*/
+
+  /*[> Do premature-aging of rest, undesired Router-LSAs <]*/
+  /*type = ntohs (OSPF6_LSTYPE_ROUTER);*/
+  /*router = oa->ospf6->router_id;*/
+  /*for (lsa = ospf6_lsdb_type_router_head (type, router, oa->lsdb); lsa;*/
+       /*lsa = ospf6_lsdb_type_router_next (type, router, lsa))*/
+    /*{*/
+      /*if (ntohl (lsa->header->id) < link_state_id)*/
+        /*continue;*/
+      /*ospf6_lsa_purge (lsa);*/
+    /*}*/
+
+  /*return 0;*/
+}
+
+
+
+
+
+
+
 /*****************************************/
 /* RFC2740 3.4.3.7 Intra-Area-Prefix-LSA */
 /*****************************************/
