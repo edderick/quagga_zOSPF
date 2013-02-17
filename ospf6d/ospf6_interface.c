@@ -414,6 +414,7 @@ ospf6_interface_state_change (u_char next_state, struct ospf6_interface *oi)
     ospf6_sso (oi->interface->ifindex, &alldrouters6, IPV6_JOIN_GROUP);
 
   OSPF6_ROUTER_LSA_SCHEDULE (oi->area);
+  OSPF6_AC_LSA_SCHEDULE (oi->area);
   if (next_state == OSPF6_INTERFACE_DOWN)
     {
       OSPF6_NETWORK_LSA_EXECUTE (oi);
@@ -1168,6 +1169,7 @@ DEFUN (ipv6_ospf6_cost,
     {
       OSPF6_LINK_LSA_SCHEDULE (oi);
       OSPF6_ROUTER_LSA_SCHEDULE (oi->area);
+      OSPF6_AC_LSA_SCHEDULE (oi->area);
       OSPF6_NETWORK_LSA_SCHEDULE (oi);
       OSPF6_INTRA_PREFIX_LSA_SCHEDULE_TRANSIT (oi);
       OSPF6_INTRA_PREFIX_LSA_SCHEDULE_STUB (oi->area);

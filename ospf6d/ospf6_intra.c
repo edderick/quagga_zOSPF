@@ -633,7 +633,9 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
   /* Start and end of all TLVs */
   start = (char *) ac_lsa + sizeof (struct ospf6_ac_lsa);
   end = (char *) lsa->header + ntohs (lsa->header->length);
-  
+
+  ac_tlv_header = start;	
+
   for (current = start; current + ac_tlv_header->length <= end;
        current += ac_tlv_header->length)
     {
@@ -647,7 +649,7 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
                name, ntohs (ac_tlv_header->length), VNL);
      
         /* TODO: Check this pointer logic and handle different TLVs */
-        vty_out (vty, "    Value: %li%s",
+        vty_out (vty, "    Value: %lu%s",
                 ((struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_tlv_header)->value, VNL);
       }
       else
@@ -662,6 +664,9 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
 int
 ospf6_ac_lsa_originate (struct thread *thread)
 {
+
+  zlog_warn("Attempting to originate AC-LSA");
+
   struct ospf6_area *oa;
 
   char buffer [OSPF6_MAX_LSASIZE];
@@ -701,7 +706,7 @@ ospf6_ac_lsa_originate (struct thread *thread)
 
   /* Fill LSA Header */
   lsa_header->age = 0;
-  lsa_header->type = htons (OSPF6_LSTYPE_ROUTER);
+  lsa_header->type = htons (OSPF6_LSTYPE_AC);
   lsa_header->id = htonl (link_state_id);
   lsa_header->adv_router = oa->ospf6->router_id;
   lsa_header->seqnum =
@@ -1552,6 +1557,13 @@ struct ospf6_lsa_handler link_handler =
   ospf6_link_lsa_show
 };
 
+struct ospf6_lsa_handler ac_handler =
+{
+  OSPF6_LSTYPE_AC,
+  "Auto-Config",
+  ospf6_ac_lsa_show
+};
+
 struct ospf6_lsa_handler intra_prefix_handler =
 {
   OSPF6_LSTYPE_INTRA_PREFIX,
@@ -1565,6 +1577,7 @@ ospf6_intra_init (void)
   ospf6_install_lsa_handler (&router_handler);
   ospf6_install_lsa_handler (&network_handler);
   ospf6_install_lsa_handler (&link_handler);
+  ospf6_install_lsa_handler (&ac_handler);
   ospf6_install_lsa_handler (&intra_prefix_handler);
 }
 

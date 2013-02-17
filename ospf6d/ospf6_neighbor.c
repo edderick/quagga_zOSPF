@@ -169,6 +169,7 @@ ospf6_neighbor_state_change (u_char next_state, struct ospf6_neighbor *on)
   if (prev_state == OSPF6_NEIGHBOR_FULL || next_state == OSPF6_NEIGHBOR_FULL)
     {
       OSPF6_ROUTER_LSA_SCHEDULE (on->ospf6_if->area);
+      OSPF6_AC_LSA_SCHEDULE (on->ospf6_if->area);
       if (on->ospf6_if->state == OSPF6_INTERFACE_DR)
         {
           OSPF6_NETWORK_LSA_SCHEDULE (on->ospf6_if);

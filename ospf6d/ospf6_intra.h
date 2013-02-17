@@ -187,6 +187,12 @@ struct ospf6_intra_prefix_lsa
       (oi)->thread_link_lsa = \
         thread_add_event (master, ospf6_link_lsa_originate, oi, 0); \
   } while (0)
+#define OSPF6_AC_LSA_SCHEDULE(oa) \
+  do { \
+    if (! (oa)->thread_ac_lsa) \
+      (oa)->thread_ac_lsa = \
+        thread_add_event (master, ospf6_ac_lsa_originate, oa, 0); \
+  } while (0)
 #define OSPF6_INTRA_PREFIX_LSA_SCHEDULE_STUB(oa) \
   do { \
     if (! (oa)->thread_intra_prefix_lsa) \
@@ -225,6 +231,7 @@ extern char *ospf6_network_lsdesc_lookup (u_int32_t router_id,
 extern int ospf6_router_lsa_originate (struct thread *);
 extern int ospf6_network_lsa_originate (struct thread *);
 extern int ospf6_link_lsa_originate (struct thread *);
+extern int ospf6_ac_lsa_originate (struct thread *);
 extern int ospf6_intra_prefix_lsa_originate_transit (struct thread *);
 extern int ospf6_intra_prefix_lsa_originate_stub (struct thread *);
 extern void ospf6_intra_prefix_lsa_add (struct ospf6_lsa *lsa);
