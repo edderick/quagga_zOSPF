@@ -58,6 +58,8 @@ struct ospf6_area
   struct thread  *thread_spf_calculation;
   struct thread  *thread_route_calculation;
   u_int32_t spf_calculation;	/* SPF calculation count */
+	
+  struct thread *thread_ac_lsa;
 
   struct thread *thread_router_lsa;
   struct thread *thread_intra_prefix_lsa;

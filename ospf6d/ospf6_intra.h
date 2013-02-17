@@ -144,14 +144,18 @@ struct ospf6_ac_lsa
 
 /* Type-Length-Value */
 #define OSPF6_TLV_MIN_SIZE		4U
-struct ospf6_ac_tlv 
+struct ospf6_ac_tlv_header 
 {
   u_int16_t type;
   u_int16_t length;
-  /* followed by value */
 };
 
 #define OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT       1
+struct ospf6_ac_tlv_router_hardware_fingerprint
+{
+	struct ospf6_ac_tlv_header header;
+	u_int32_t value;
+};
 
 /* Intra-Area-Prefix-LSA */
 #define OSPF6_INTRA_PREFIX_LSA_MIN_SIZE       12U /* w/o 1st IPv6 prefix */
