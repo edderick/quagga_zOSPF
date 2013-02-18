@@ -150,7 +150,8 @@ struct ospf6_ac_tlv_header
   u_int16_t length;
 };
 
-#define OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT       1
+#define OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT       1U
+#define OSPF6_AC_TLV_TYPE1_LENGTH 4U
 struct ospf6_ac_tlv_router_hardware_fingerprint
 {
 	struct ospf6_ac_tlv_header header;

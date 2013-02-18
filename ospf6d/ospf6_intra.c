@@ -612,8 +612,6 @@ ospf6_link_lsa_originate (struct thread *thread)
 }
 
 
-
-
 /***************************************/
 /* draft-ietf-ospf-ospfv3-autoconfig-00
  * 5.2.1 Auto-Configuration-LSA        */
@@ -623,9 +621,8 @@ static int
 ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
 {
   char *start, *end, *current;
-  char buf[32], name[32];
+  char name[32];
   struct ospf6_ac_lsa *ac_lsa;
-  struct ospf6_ac_tlv_header *ac_tlv_header;
 
   ac_lsa = (struct ospf6_ac_lsa *)
     ((char *) lsa->header + sizeof (struct ospf6_lsa_header));
@@ -635,41 +632,39 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
   end = (char *) lsa->header + ntohs (lsa->header->length);
   current = start;
 
-  ac_tlv_header = start;	
-
   while (current < end)
-    {
-      ac_tlv_header = (struct ospf6_ac_tlv_header *) current;
+  {
+    struct ospf6_ac_tlv_header *ac_tlv_header = (struct ospf6_ac_tlv_header *) current;
 
-      if (ac_tlv_header->type == OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT)
-      {  
-        snprintf (name, sizeof (name), "Router-Hardware-Fingerprint");
+    if (ac_tlv_header->type == OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT)
+    {  
+      struct ospf6_ac_tlv_router_hardware_fingerprint *ac_tlv_rhwfp
+	= (struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_tlv_header;
 
-        vty_out (vty, "    Type: %s Length: %d%s",
-               name, ntohs (ac_tlv_header->length), VNL);
-     
-        /* TODO: Check this pointer logic and handle different TLVs */
-        vty_out (vty, "    Value: %lu%s",
-                ((struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_tlv_header)->value, VNL);
-      }
-      else
-        vty_out (vty, "   Unknown AC-LSA Type %s", VNL);
+      snprintf (name, sizeof (name), "Router-Hardware-Fingerprint");
 
-    /* Step */
-    current += sizeof (struct ospf6_ac_tlv_router_hardware_fingerprint);
-
+      vty_out (vty, "    Type: %s%s", name, VNL);
+      vty_out (vty, "    Length: %d%s", ac_tlv_header->length, VNL);
+      vty_out (vty, "    Value: %u%s", ac_tlv_rhwfp->value, VNL);
+      
+      current += sizeof (struct ospf6_ac_tlv_router_hardware_fingerprint);
     }
+    else
+    {
+      vty_out (vty, "    Unknown AC-LSA Type %s", VNL);
+      /* TODO: Ensure this works */
+      /* Print out a length and value for debugging..? */
+      current += sizeof (struct ospf6_ac_tlv_header) + ac_tlv_header->length;
+    }
+
+  }
   return 0;
 }
 
 /* Originate an Auto-Configuration LSA */
-/* 100% Untested */
-int
+  int
 ospf6_ac_lsa_originate (struct thread *thread)
 {
-
-  zlog_warn("Attempting to originate AC-LSA");
-
   struct ospf6_area *oa;
 
   char buffer [OSPF6_MAX_LSASIZE];
@@ -677,15 +672,8 @@ ospf6_ac_lsa_originate (struct thread *thread)
   struct ospf6_lsa *lsa;
 
   u_int32_t link_state_id = 0;
-  struct listnode *node, *nnode;
-  struct listnode *j;
-  struct ospf6_interface *oi;
-  struct ospf6_neighbor *on, *drouter = NULL;
   struct ospf6_ac_lsa *ac_lsa;
   struct ospf6_ac_tlv_router_hardware_fingerprint *ac_tlv_rhwfp;
-  u_int16_t type;
-  u_int32_t router;
-  int count;
 
   oa = (struct ospf6_area *) THREAD_ARG (thread);
   oa->thread_ac_lsa = NULL;
@@ -701,7 +689,7 @@ ospf6_ac_lsa_originate (struct thread *thread)
   /* Fill AC-LSA */
   ac_tlv_rhwfp = (struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_lsa; 
   ac_tlv_rhwfp->header.type = OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT;
-  ac_tlv_rhwfp->header.length = 4; /* TODO: REMOVE MAGIC NUMBER? */
+  ac_tlv_rhwfp->header.length = OSPF6_AC_TLV_TYPE1_LENGTH;
   ac_tlv_rhwfp->value = ospf6_router_hardware_fingerprint ();
 
   /* Step onto next tlv? */
@@ -714,7 +702,7 @@ ospf6_ac_lsa_originate (struct thread *thread)
   lsa_header->adv_router = oa->ospf6->router_id;
   lsa_header->seqnum =
     ospf6_new_ls_seqnum (lsa_header->type, lsa_header->id,
-			 lsa_header->adv_router, oa->lsdb);
+	lsa_header->adv_router, oa->lsdb);
   lsa_header->length = htons ((caddr_t) ac_tlv_rhwfp - (caddr_t) buffer);
 
   /* LSA checksum */
@@ -728,11 +716,6 @@ ospf6_ac_lsa_originate (struct thread *thread)
 
   return 0;
 }
-
-
-
-
-
 
 
 /*****************************************/
