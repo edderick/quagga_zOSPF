@@ -633,11 +633,11 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
   /* Start and end of all TLVs */
   start = (char *) ac_lsa + sizeof (struct ospf6_ac_lsa);
   end = (char *) lsa->header + ntohs (lsa->header->length);
+  current = start;
 
   ac_tlv_header = start;	
 
-  for (current = start; current + ac_tlv_header->length <= end;
-       current += ac_tlv_header->length)
+  while (current < end)
     {
       ac_tlv_header = (struct ospf6_ac_tlv_header *) current;
 
@@ -654,6 +654,9 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
       }
       else
         vty_out (vty, "   Unknown AC-LSA Type %s", VNL);
+
+    /* Step */
+    current += sizeof (struct ospf6_ac_tlv_router_hardware_fingerprint);
 
     }
   return 0;
