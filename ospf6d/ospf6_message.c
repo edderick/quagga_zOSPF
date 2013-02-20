@@ -1581,6 +1581,9 @@ ospf6_receive (struct thread *thread)
      and also in the type-specific dispatching functions a dead code,
      which can be dismissed in a cleanup-focused review round later. */
 
+  /* Valid packet received, check for duplicate router-id */
+  ospf6_check_router_id(oh);
+
   /* Log */
   if (IS_OSPF6_DEBUG_MESSAGE (oh->type, RECV))
     {

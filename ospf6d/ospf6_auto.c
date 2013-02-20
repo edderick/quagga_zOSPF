@@ -3,9 +3,11 @@
 #include "linklist.h"
 #include "thread.h"
 #include "vty.h"
+#include "prefix.h"
 
 #include "ospf6_top.h"
 #include "ospf6_interface.h"
+#include "ospf6_message.h"
 #include "ospf6_area.h"
 #include "ospf6_auto.h"
 #include "ospf6d.h"
@@ -76,10 +78,13 @@ generate_router_id ()
 }
 
 /* Shuts down router and restarts it with new router-id */
-void ospf6_set_router_id (u_int32_t rid){
+void 
+ospf6_set_router_id (u_int32_t rid)
+{
 	/* Remove all timers */
 	struct thread *t = master->timer.head;
-	for(int i = 0; i < master->timer.count; i++){
+	for(int i = 0; i < master->timer.count; i++)
+	{
 		struct thread *next; 
 		next = t->next;
 		thread_cancel(t);
@@ -124,41 +129,80 @@ void ospf6_set_router_id (u_int32_t rid){
 }
 
 /* A copy of ospf_interface_area_cmd */
-static void create_if (char * name)
+static void 
+create_if (char * name)
 {
-struct ospf6 *o;
-struct ospf6_area *oa;
-struct ospf6_interface *oi;
-struct interface *ifp;
-u_int32_t area_id;
+  struct ospf6 *o;
+  struct ospf6_area *oa;
+  struct ospf6_interface *oi;
+  struct interface *ifp;
+  u_int32_t area_id;
 
-o = ospf6;
+  o = ospf6;
 
-/* find/create ospf6 interface */
-ifp = if_get_by_name (name);
-oi = (struct ospf6_interface *) ifp->info;
-if (oi == NULL)
-  oi = ospf6_interface_create (ifp);
+  /* find/create ospf6 interface */
+  ifp = if_get_by_name (name);
+  oi = (struct ospf6_interface *) ifp->info;
+  if (oi == NULL)
+    oi = ospf6_interface_create (ifp);
 
-area_id = 0; 
+  area_id = 0; 
 
-/* find/create ospf6 area */
-oa = ospf6_area_lookup (area_id, o);
-if (oa == NULL)
-  oa = ospf6_area_create (area_id, o);
+  /* find/create ospf6 area */
+  oa = ospf6_area_lookup (area_id, o);
+  if (oa == NULL)
+    oa = ospf6_area_create (area_id, o);
 
-/* attach interface to area */
-listnode_add (oa->if_list, oi); /* sort ?? */
-oi->area = oa;
+  /* attach interface to area */
+  listnode_add (oa->if_list, oi); /* sort ?? */
+  oi->area = oa;
 
-SET_FLAG (oa->flag, OSPF6_AREA_ENABLE);
+  SET_FLAG (oa->flag, OSPF6_AREA_ENABLE);
 
-/* start up */
-thread_add_event (master, interface_up, oi, 0);
+  /* start up */
+  thread_add_event (master, interface_up, oi, 0);
 
-/* If the router is ABR, originate summary routes */
-if (ospf6_is_router_abr (o))
-  ospf6_abr_enable_area (oa);
+  /* If the router is ABR, originate summary routes */
+  if (ospf6_is_router_abr (o))
+    ospf6_abr_enable_area (oa);
 
 }
 
+/* Ensure router id is not a duplicate */
+void 
+ospf6_check_router_id (struct ospf6_header *oh, struct in6_addr src, struct in6_addr dst)
+{
+  
+  zlog_warn("Checking packet");
+  if (oh->router_id == ospf6->router_id) 
+  {
+    struct listnode *node, *nnode;
+    struct ospf6_area *area; 
+
+    /* Self originated */
+    if (IPV6_ADDR_SAME(&src, &dst))
+      return;
+    
+    /* Check all IP Addresses associated with this router*/
+    for (ALL_LIST_ELEMENTS(ospf6->area_list, node, nnode, area))
+    {
+      struct listnode *ifnode, *ifnnode;
+      struct ospf6_interface *inf;
+      for (ALL_LIST_ELEMENTS(area->if_list, ifnode, ifnnode, inf))
+      {
+	/* Multiple interfaces on same link? */
+	if(IPV6_ADDR_SAME(&src, inf->linklocal_addr)){
+	  return;
+	}
+      }
+    }
+  
+    zlog_warn("BETTER CHANGE BRO");
+
+  }
+  else 
+  {
+    zlog_warn("No match");
+  }
+  
+}
