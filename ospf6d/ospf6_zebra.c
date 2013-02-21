@@ -54,7 +54,7 @@ struct in_addr router_id_zebra;
 /* Router-id update message from zebra. */
 static int
 ospf6_router_id_update_zebra (int command, struct zclient *zclient,
-			      zebra_size_t length)
+    zebra_size_t length)
 {
   struct prefix router_id;
   struct ospf6 *o = ospf6;
@@ -64,27 +64,36 @@ ospf6_router_id_update_zebra (int command, struct zclient *zclient,
 
   if (o == NULL)
   {  
-	if (auto_conf) 
-	{
-		u_int32_t rid = generate_router_id ();  
-		ospf6_set_router_id (rid);
-	}
-	
-	return 0;
+    if (auto_conf) 
+    {
+      /* XXX: There must be a better way than setting 
+       * everything up twice */
+      ospf6_set_router_id (0);
+    }
+    else
+    {
+      return 0;
+    }
   }
 
-  if (o->router_id  == 0)
+  if (ospf6->rid_seed == 0)
   {
-	if (auto_conf)
-	{
-     		u_int32_t rid = generate_router_id ();  
-		ospf6_set_router_id (rid);
-	}
-	else 
-	{
-		ospf6_set_router_id ( (u_int32_t) router_id_zebra.s_addr);
-	}
-}
+      ospf6_init_seed ();
+  }
+
+  if (ospf6->router_id  == 0)
+  {
+    if (auto_conf)
+    {
+      u_int32_t rid;
+      rid = generate_router_id ();
+      ospf6_set_router_id (rid);
+    }
+    else 
+    {
+      ospf6_set_router_id ( (u_int32_t) router_id_zebra.s_addr);
+    }
+  }
 
   return 0;
 }

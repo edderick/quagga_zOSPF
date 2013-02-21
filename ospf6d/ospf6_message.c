@@ -1307,11 +1307,16 @@ ospf6_rxpacket_examin (struct ospf6_interface *oi, struct ospf6_header *oh, cons
   }
 
   /* Router-ID check */
-  if (oh->router_id == oi->area->ospf6->router_id)
+  /* XXX: How is self origination handled? */
+  if(!auto_conf)
   {
-    zlog_warn ("%s: Duplicate Router-ID (%s)", __func__, inet_ntop (AF_INET, &oh->router_id, buf[0], INET_ADDRSTRLEN));
-    return MSG_NG;
+    if (oh->router_id == oi->area->ospf6->router_id)
+    {
+      zlog_warn ("%s: Duplicate Router-ID (%s)", __func__, inet_ntop (AF_INET, &oh->router_id, buf[0], INET_ADDRSTRLEN));
+      return MSG_NG;
+    }
   }
+
   return MSG_OK;
 }
 
@@ -1582,7 +1587,8 @@ ospf6_receive (struct thread *thread)
      which can be dismissed in a cleanup-focused review round later. */
 
   /* Valid packet received, check for duplicate router-id */
-  ospf6_check_router_id(oh);
+  if(auto_conf)
+    ospf6_check_router_id(oh);
 
   /* Log */
   if (IS_OSPF6_DEBUG_MESSAGE (oh->type, RECV))

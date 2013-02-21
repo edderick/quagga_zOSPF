@@ -50,6 +50,10 @@ struct ospf6
   struct route_table *external_id_table;
   u_int32_t external_id;
 
+  /* Autoconf */
+  u_int32_t hardware_fingerprint; /* XXX: Currently unused */
+  u_int32_t rid_seed;
+
   /* redistribute route-map */
   struct
   {

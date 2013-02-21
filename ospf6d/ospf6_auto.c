@@ -48,7 +48,8 @@ ospf6_router_hardware_fingerprint ()
 
         node = iflist->head;
 
-        for (i = 0; i < iflist->count; i++) {
+        for (i = 0; i < iflist->count; i++) 
+	{
                 struct interface *current_interface = listgetdata(node);
                 #ifdef HAVE_STRUCT_SOCKADDR_DL
                         /* TODO Add support for STRUCT_SOCKADDR_DL */
@@ -69,18 +70,26 @@ ospf6_router_hardware_fingerprint ()
         return fingerprint;
 }
 
-/* TODO Add a parameter for fingerprint? */
- u_int32_t
+void 
+ospf6_init_seed ()
+{
+  ospf6->rid_seed = ospf6_router_hardware_fingerprint ();
+}
+
+/* Generates a _new_ router id */
+u_int32_t
 generate_router_id ()
 {
-        srand(ospf6_router_hardware_fingerprint ());
-        return rand();
+        /* rand_r returns and positive int, we would prefer an unsigned int */
+	return rand_r(&ospf6->rid_seed);
 }
 
 /* Shuts down router and restarts it with new router-id */
 void 
 ospf6_set_router_id (u_int32_t rid)
 {
+	u_int32_t old_seed = 0;
+  
 	/* Remove all timers */
 	struct thread *t = master->timer.head;
 	for(int i = 0; i < master->timer.count; i++)
@@ -92,7 +101,10 @@ ospf6_set_router_id (u_int32_t rid)
 	}
 
 	if (ospf6 != NULL) 
+	{
+		old_seed = ospf6->rid_seed;
 		ospf6_delete (ospf6);
+	}
 
 	/* Reconfigure */
 	if (!auto_conf) 
@@ -125,6 +137,7 @@ ospf6_set_router_id (u_int32_t rid)
 	
 	ospf6->router_id = rid; 
 	ospf6->router_id_static = rid;
+	ospf6->rid_seed = old_seed;
 
 }
 
@@ -191,13 +204,15 @@ ospf6_check_router_id (struct ospf6_header *oh, struct in6_addr src, struct in6_
       for (ALL_LIST_ELEMENTS(area->if_list, ifnode, ifnnode, inf))
       {
 	/* Multiple interfaces on same link? */
+	/* Draft doesn't specify _HOW_ this should be done */
 	if(IPV6_ADDR_SAME(&src, inf->linklocal_addr)){
 	  return;
 	}
       }
     }
   
-    zlog_warn("BETTER CHANGE BRO");
+    zlog_warn("Changing router-id");
+    ospf6_set_router_id (generate_router_id ());
 
   }
   else 
