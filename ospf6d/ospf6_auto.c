@@ -9,8 +9,12 @@
 #include "ospf6_interface.h"
 #include "ospf6_message.h"
 #include "ospf6_area.h"
-#include "ospf6_auto.h"
+
+#include "ospf6_intra.h"
+#include "ospf6_lsa.h"
 #include "ospf6d.h"
+
+#include "ospf6_auto.h"
 
 /* Proto */
 static void create_if (char * name);
@@ -85,11 +89,11 @@ generate_router_id ()
 }
 
 /* Shuts down router and restarts it with new router-id */
-void 
+	void 
 ospf6_set_router_id (u_int32_t rid)
 {
 	u_int32_t old_seed = 0;
-  
+
 	/* Remove all timers */
 	struct thread *t = master->timer.head;
 	for(int i = 0; i < master->timer.count; i++)
@@ -117,28 +121,25 @@ ospf6_set_router_id (u_int32_t rid)
 		ospf6_enable (ospf6);
 
 		struct listnode *node;
-        	int i;
+		int i;
 
-        	node = iflist->head;
+		node = iflist->head;
 
 		/* TODO: I think this currently depends on the config file to put the interfaces up..? */
-        	for (i = 0; i < iflist->count; i++) {
-                	struct interface *current_interface = listgetdata(node);
-                        if (if_is_up (current_interface) && !if_is_loopback(current_interface))
-                        {
-                        	create_if (current_interface->name);
+		for (i = 0; i < iflist->count; i++) 
+		{
+			struct interface *current_interface = listgetdata(node);
+			if (if_is_up (current_interface) && !if_is_loopback(current_interface))
+			{
+				create_if (current_interface->name);
 			}
-                	node = listnextnode(node);
-        	}
-
-
-		
+			node = listnextnode(node);
+		}
 	}
-	
+
 	ospf6->router_id = rid; 
 	ospf6->router_id_static = rid;
 	ospf6->rid_seed = old_seed;
-
 }
 
 /* A copy of ospf_interface_area_cmd */
@@ -220,4 +221,73 @@ ospf6_check_router_id (struct ospf6_header *oh, struct in6_addr src, struct in6_
     zlog_warn("No match");
   }
   
+}
+
+/* Ensure a self originated lsa is from self */
+int 
+ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header) 
+{
+		if (lsa_header->type != ntohs(OSPF6_LSTYPE_AC))
+		{
+			zlog_warn ("Is not an AC LSA");
+			return 0;
+		}
+
+		if (lsa_header->id != 0)
+		{
+			zlog_warn ("Is not ID = 0");
+			return 0;
+		}
+		
+		/* Scope block for neatness: remove if confusing */
+		{
+			char *start, *end, *current;
+			
+			start = (char *) lsa_header 
+				+ sizeof (struct ospf6_lsa_header) 
+				+ sizeof (struct ospf6_ac_lsa);
+			
+			end = (char *) lsa_header + ntohs (lsa_header->length);
+			
+			current = start;
+
+		  while (current < end)
+			{
+				struct ospf6_ac_tlv_header *ac_tlv_header = (struct ospf6_ac_tlv_header *) current;
+				if (ac_tlv_header->type == OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT) 
+				{
+					struct ospf6_ac_tlv_router_hardware_fingerprint *ac_tlv_rhfp =
+						(struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_tlv_header;
+			
+					if (ac_tlv_header->length != 4) 
+					{
+						zlog_warn ("Different sized fingerprint - must be a conflict");
+					}
+
+					if (ac_tlv_rhfp->value == ospf6_router_hardware_fingerprint ())
+					{
+						/* It's all okay - true self*/
+						zlog_warn("True self");
+						return 0;
+					}
+					else 
+					{
+						/* There is a conflict! */
+						zlog_warn("Conflict");
+
+						zlog_warn("Changing router-id");
+						ospf6_set_router_id (generate_router_id ());
+
+						return 1;
+					}
+				}
+				current = (char *) ac_tlv_header 
+					+ sizeof (ac_tlv_header) 
+					+ ntohs (ac_tlv_header->length);
+			}
+		}	
+		/* There must have been a problem */
+		zlog_warn ("No rhwfp tlv found");
+		return 1;
+
 }

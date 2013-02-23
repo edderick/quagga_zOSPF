@@ -43,6 +43,7 @@
 #include "ospf6_abr.h"
 #include "ospf6_asbr.h"
 #include "ospf6_intra.h"
+#include "ospf6_auto.h"
 
 #include "ospf6_flood.h"
 #include "ospf6d.h"
@@ -1354,6 +1355,15 @@ ospf6_lsupdate_recv (struct in6_addr *src, struct in6_addr *dst,
        p + OSPF6_LSA_SIZE (p) <= OSPF6_MESSAGE_END (oh);
        p += OSPF6_LSA_SIZE (p))
     {
+			struct ospf6_lsa_header *lsa_header = (struct ospf6_lsa_header *) p;
+			
+			if (lsa_header->adv_router == ospf6->router_id)
+			{
+				zlog_warn ("Check for RID conflict");
+				if (ospf6_check_hw_fingerprint (lsa_header))
+					return;
+			}
+
       ospf6_receive_lsa (on, (struct ospf6_lsa_header *) p);
     }
 
@@ -1588,7 +1598,7 @@ ospf6_receive (struct thread *thread)
 
   /* Valid packet received, check for duplicate router-id */
   if(auto_conf)
-    ospf6_check_router_id(oh);
+    ospf6_check_router_id(oh, src, dst);
 
   /* Log */
   if (IS_OSPF6_DEBUG_MESSAGE (oh->type, RECV))

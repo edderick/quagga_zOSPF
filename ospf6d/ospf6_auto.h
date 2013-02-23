@@ -8,5 +8,6 @@ void ospf6_init_seed ();
 void ospf6_set_router_id (u_int32_t rid);
 
 void ospf6_check_router_id(struct ospf6_header *oh, struct in6_addr src, struct in6_addr dst);
+int ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header); 
 
 #endif /* OSPF6_AUTO_H */
