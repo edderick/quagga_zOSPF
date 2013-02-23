@@ -86,7 +86,7 @@ ospf6_router_id_update_zebra (int command, struct zclient *zclient,
     if (auto_conf)
     {
       u_int32_t rid;
-      rid = generate_router_id ();
+      rid = ospf6_generate_router_id ();
       ospf6_set_router_id (rid);
     }
     else 

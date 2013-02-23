@@ -1,3 +1,4 @@
+/*TODO: Remove (or change to debug) zlog_warns */
 #include <zebra.h>
 
 #include "linklist.h"
@@ -23,73 +24,74 @@ static void create_if (char * name);
 static u_int64_t
 hw_addr_to_long (u_char *hw_addr, int hw_addr_len)
 {
-        u_int64_t total = 0;
-        int i;
+	u_int64_t total = 0;
+	int i;
 
-        for (i = hw_addr_len - 1; i >= 0; i--)
-        {
-                total *= 256;
-                total += hw_addr[i];
-        }
+	for (i = hw_addr_len - 1; i >= 0; i--)
+	{
+		total *= 256;
+		total += hw_addr[i];
+	}
 
-        return total;
+	return total;
 }
 
 /* Can be replaced with a more sophisticated hash if needed */
 static u_int32_t
 hash_hw_addr (u_int64_t hw_addr)
 {
-        return hw_addr % UINT32_MAX;
+	return hw_addr % UINT32_MAX;
 }
 
 /* Generate a Router Hardware Fingerprint for zOSPF */
 u_int32_t
 ospf6_router_hardware_fingerprint ()
 {
-        struct listnode *node;
-        int i;
-        u_int32_t fingerprint = 0;
+	struct listnode *node;
+	int i;
+	u_int32_t fingerprint = 0;
 
-        node = iflist->head;
+	node = iflist->head;
 
-        for (i = 0; i < iflist->count; i++) 
+	for (i = 0; i < iflist->count; i++) 
 	{
-                struct interface *current_interface = listgetdata(node);
-                #ifdef HAVE_STRUCT_SOCKADDR_DL
-                        /* TODO Add support for STRUCT_SOCKADDR_DL */
-                        /*fingerprint = fingerprint + LLADDR(current_interface->sdl);*/
-                        fingerprint = 1;
-                #else
-                        if (if_is_up (current_interface) && !if_is_loopback(current_interface))
-                        {
-                                fingerprint += hash_hw_addr (hw_addr_to_long (current_interface->hw_addr,
-                                                                        current_interface->hw_addr_len));
-                        }
-                #endif /* HAVE_STRUCT_SOCKADDR_DL */
-                node = listnextnode(node);
-        }
+		struct interface *current_interface = listgetdata(node);
+#ifdef HAVE_STRUCT_SOCKADDR_DL
+		/* TODO Add support for STRUCT_SOCKADDR_DL */
+		/*fingerprint = fingerprint + LLADDR(current_interface->sdl);*/
+		fingerprint = 1;
+#else
+		if (if_is_up (current_interface) && !if_is_loopback(current_interface))
+		{
+			fingerprint += hash_hw_addr (hw_addr_to_long (current_interface->hw_addr,
+						current_interface->hw_addr_len));
+		}
+#endif /* HAVE_STRUCT_SOCKADDR_DL */
+		node = listnextnode(node);
+	}
 
-        zlog_warn("Fingerprint: %lu", fingerprint);
+	zlog_warn("Fingerprint: %lu", fingerprint);
 
-        return fingerprint;
+	return fingerprint;
 }
 
+/* Initialises the rid seed to the router-hardware fingerprint */
 void 
 ospf6_init_seed ()
 {
-  ospf6->rid_seed = ospf6_router_hardware_fingerprint ();
+	ospf6->rid_seed = ospf6_router_hardware_fingerprint ();
 }
 
 /* Generates a _new_ router id */
 u_int32_t
-generate_router_id ()
+ospf6_generate_router_id ()
 {
-        /* rand_r returns and positive int, we would prefer an unsigned int */
+	/* rand_r returns and positive int, we would prefer an unsigned int */
 	return rand_r(&ospf6->rid_seed);
 }
 
 /* Shuts down router and restarts it with new router-id */
-	void 
+void 
 ospf6_set_router_id (u_int32_t rid)
 {
 	u_int32_t old_seed = 0;
@@ -146,148 +148,148 @@ ospf6_set_router_id (u_int32_t rid)
 static void 
 create_if (char * name)
 {
-  struct ospf6 *o;
-  struct ospf6_area *oa;
-  struct ospf6_interface *oi;
-  struct interface *ifp;
-  u_int32_t area_id;
+	struct ospf6 *o;
+	struct ospf6_area *oa;
+	struct ospf6_interface *oi;
+	struct interface *ifp;
+	u_int32_t area_id;
 
-  o = ospf6;
+	o = ospf6;
 
-  /* find/create ospf6 interface */
-  ifp = if_get_by_name (name);
-  oi = (struct ospf6_interface *) ifp->info;
-  if (oi == NULL)
-    oi = ospf6_interface_create (ifp);
+	/* find/create ospf6 interface */
+	ifp = if_get_by_name (name);
+	oi = (struct ospf6_interface *) ifp->info;
+	if (oi == NULL)
+		oi = ospf6_interface_create (ifp);
 
-  area_id = 0; 
+	area_id = 0; 
 
-  /* find/create ospf6 area */
-  oa = ospf6_area_lookup (area_id, o);
-  if (oa == NULL)
-    oa = ospf6_area_create (area_id, o);
+	/* find/create ospf6 area */
+	oa = ospf6_area_lookup (area_id, o);
+	if (oa == NULL)
+		oa = ospf6_area_create (area_id, o);
 
-  /* attach interface to area */
-  listnode_add (oa->if_list, oi); /* sort ?? */
-  oi->area = oa;
+	/* attach interface to area */
+	listnode_add (oa->if_list, oi); /* sort ?? */
+	oi->area = oa;
 
-  SET_FLAG (oa->flag, OSPF6_AREA_ENABLE);
+	SET_FLAG (oa->flag, OSPF6_AREA_ENABLE);
 
-  /* start up */
-  thread_add_event (master, interface_up, oi, 0);
+	/* start up */
+	thread_add_event (master, interface_up, oi, 0);
 
-  /* If the router is ABR, originate summary routes */
-  if (ospf6_is_router_abr (o))
-    ospf6_abr_enable_area (oa);
-
+	/* If the router is ABR, originate summary routes */
+	if (ospf6_is_router_abr (o))
+		ospf6_abr_enable_area (oa);
 }
 
 /* Ensure router id is not a duplicate */
 void 
 ospf6_check_router_id (struct ospf6_header *oh, struct in6_addr src, struct in6_addr dst)
 {
-  
-  zlog_warn("Checking packet");
-  if (oh->router_id == ospf6->router_id) 
-  {
-    struct listnode *node, *nnode;
-    struct ospf6_area *area; 
+	zlog_warn("Checking packet");
+	if (oh->router_id == ospf6->router_id) 
+	{
+		struct listnode *node, *nnode;
+		struct ospf6_area *area; 
 
-    /* Self originated */
-    if (IPV6_ADDR_SAME(&src, &dst))
-      return;
-    
-    /* Check all IP Addresses associated with this router*/
-    for (ALL_LIST_ELEMENTS(ospf6->area_list, node, nnode, area))
-    {
-      struct listnode *ifnode, *ifnnode;
-      struct ospf6_interface *inf;
-      for (ALL_LIST_ELEMENTS(area->if_list, ifnode, ifnnode, inf))
-      {
-	/* Multiple interfaces on same link? */
-	/* Draft doesn't specify _HOW_ this should be done */
-	if(IPV6_ADDR_SAME(&src, inf->linklocal_addr)){
-	  return;
+		/* Self originated */
+		if (IPV6_ADDR_SAME(&src, &dst))
+			return;
+
+		/* Check all IP Addresses associated with this router*/
+		for (ALL_LIST_ELEMENTS(ospf6->area_list, node, nnode, area))
+		{
+			struct listnode *ifnode, *ifnnode;
+			struct ospf6_interface *inf;
+			for (ALL_LIST_ELEMENTS(area->if_list, ifnode, ifnnode, inf))
+			{
+				/* Multiple interfaces on same link? */
+				/* Draft doesn't specify _HOW_ this should be done */
+				if(IPV6_ADDR_SAME(&src, inf->linklocal_addr)){
+					return;
+				}
+			}
+		}
+
+		zlog_warn("Changing router-id");
+		ospf6_set_router_id (ospf6_generate_router_id ());
 	}
-      }
-    }
-  
-    zlog_warn("Changing router-id");
-    ospf6_set_router_id (generate_router_id ());
-
-  }
-  else 
-  {
-    zlog_warn("No match");
-  }
-  
+	else 
+	{
+		zlog_warn("No match");
+	}
 }
 
 /* Ensure a self originated lsa is from self */
 int 
 ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header) 
 {
-		if (lsa_header->type != ntohs(OSPF6_LSTYPE_AC))
-		{
-			zlog_warn ("Is not an AC LSA");
-			return 0;
-		}
+	char *start, *end, *current;
 
-		if (lsa_header->id != 0)
-		{
-			zlog_warn ("Is not ID = 0");
-			return 0;
-		}
-		
-		/* Scope block for neatness: remove if confusing */
-		{
-			char *start, *end, *current;
-			
-			start = (char *) lsa_header 
-				+ sizeof (struct ospf6_lsa_header) 
-				+ sizeof (struct ospf6_ac_lsa);
-			
-			end = (char *) lsa_header + ntohs (lsa_header->length);
-			
-			current = start;
+	/* Check it is an AC LSA */
+	if (lsa_header->type != ntohs(OSPF6_LSTYPE_AC))
+	{
+		zlog_warn ("Is not an AC LSA");
+		return 0;
+	}
 
-		  while (current < end)
+	/* Check it has an LS-ID of 0 */
+	if (lsa_header->id != 0)
+	{
+		zlog_warn ("Is not ID = 0");
+		return 0;
+	}
+	
+	/* First TLV */
+	start = (char *) lsa_header 
+		+ sizeof (struct ospf6_lsa_header) 
+		+ sizeof (struct ospf6_ac_lsa);
+
+	/* End of LSA */
+	end = (char *) lsa_header + ntohs (lsa_header->length);
+
+	current = start;
+
+	while (current < end)
+	{
+		struct ospf6_ac_tlv_header *ac_tlv_header = (struct ospf6_ac_tlv_header *) current;
+		if (ac_tlv_header->type == OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT) 
+		{
+			struct ospf6_ac_tlv_router_hardware_fingerprint *ac_tlv_rhfp =
+				(struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_tlv_header;
+			
+			/* Check fingerprints, check length first since its variable */
+			if (ac_tlv_header->length == 4 
+					&& ac_tlv_rhfp->value == ospf6_router_hardware_fingerprint ())
 			{
-				struct ospf6_ac_tlv_header *ac_tlv_header = (struct ospf6_ac_tlv_header *) current;
-				if (ac_tlv_header->type == OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT) 
-				{
-					struct ospf6_ac_tlv_router_hardware_fingerprint *ac_tlv_rhfp =
-						(struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_tlv_header;
-			
-					if (ac_tlv_header->length != 4) 
-					{
-						zlog_warn ("Different sized fingerprint - must be a conflict");
-					}
-
-					if (ac_tlv_rhfp->value == ospf6_router_hardware_fingerprint ())
-					{
-						/* It's all okay - true self*/
-						zlog_warn("True self");
-						return 0;
-					}
-					else 
-					{
-						/* There is a conflict! */
-						zlog_warn("Conflict");
-
-						zlog_warn("Changing router-id");
-						ospf6_set_router_id (generate_router_id ());
-
-						return 1;
-					}
-				}
-				current = (char *) ac_tlv_header 
-					+ sizeof (ac_tlv_header) 
-					+ ntohs (ac_tlv_header->length);
+				/* Matching fingerprints implies true self origination*/
+				zlog_warn("True self");
+				return 0;
 			}
-		}	
-		/* There must have been a problem */
-		zlog_warn ("No rhwfp tlv found");
-		return 1;
+			else 
+			{
+				if (ac_tlv_header->length != 4) 
+				{
+					zlog_warn ("Different sized fingerprint - must be a conflict");
+				}	
 
+				/* There is a conflict */
+				zlog_warn("Conflict");
+
+				zlog_warn("Changing router-id");
+				ospf6_set_router_id (ospf6_generate_router_id ());
+
+				return 1;
+			}
+		}
+		/* Step */
+		current = (char *) ac_tlv_header 
+			+ sizeof (ac_tlv_header) 
+			+ ntohs (ac_tlv_header->length);
+	}
+
+	/* There must have been a problem */
+	zlog_warn ("No rhwfp tlv found");
+	return 1;
 }
