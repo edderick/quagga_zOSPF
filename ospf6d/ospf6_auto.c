@@ -184,7 +184,7 @@ create_if (char * name)
 }
 
 /* Ensure router id is not a duplicate */
-  void 
+void 
 ospf6_check_router_id (struct ospf6_header *oh, struct in6_addr src, struct in6_addr dst)
 {
   zlog_warn("Checking packet");
