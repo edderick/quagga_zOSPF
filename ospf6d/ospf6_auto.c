@@ -187,37 +187,41 @@ create_if (char * name)
 void 
 ospf6_check_router_id (struct ospf6_header *oh, struct in6_addr src, struct in6_addr dst)
 {
-  zlog_warn("Checking packet");
+  zlog_warn ("Checking packet");
   if (oh->router_id == ospf6->router_id) 
   {
     struct listnode *node, *nnode;
     struct ospf6_area *area; 
 
     /* Self originated */
-    if (IPV6_ADDR_SAME(&src, &dst))
+    if (IPV6_ADDR_SAME (&src, &dst))
       return;
 
     /* Check all IP Addresses associated with this router*/
-    for (ALL_LIST_ELEMENTS(ospf6->area_list, node, nnode, area))
+    for (ALL_LIST_ELEMENTS (ospf6->area_list, node, nnode, area))
     {
       struct listnode *ifnode, *ifnnode;
       struct ospf6_interface *inf;
-      for (ALL_LIST_ELEMENTS(area->if_list, ifnode, ifnnode, inf))
+      for (ALL_LIST_ELEMENTS (area->if_list, ifnode, ifnnode, inf))
       {
 	/* Multiple interfaces on same link? */
 	/* Draft doesn't specify _HOW_ this should be done */
-	if(IPV6_ADDR_SAME(&src, inf->linklocal_addr)){
+	if(IPV6_ADDR_SAME (&src, inf->linklocal_addr)){
 	  return;
 	}
       }
     }
-
-    zlog_warn("Changing router-id");
-    ospf6_set_router_id (ospf6_generate_router_id ());
+    
+    /* If link local address was smaller */
+    if (IPV6_ADDR_CMP (&dst, &src) < 0)
+    {
+      zlog_warn ("Changing router-id");
+      ospf6_set_router_id (ospf6_generate_router_id ());
+    }
   }
   else 
   {
-    zlog_warn("No match");
+    zlog_warn ("No match");
   }
 }
 
@@ -256,12 +260,13 @@ ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header)
     struct ospf6_ac_tlv_header *ac_tlv_header = (struct ospf6_ac_tlv_header *) current;
     if (ac_tlv_header->type == OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT) 
     {
+      u_int32_t fingerprint = ospf6_router_hardware_fingerprint ();
       struct ospf6_ac_tlv_router_hardware_fingerprint *ac_tlv_rhfp =
 	(struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_tlv_header;
 
       /* Check fingerprints, check length first since its variable */
       if (ac_tlv_header->length == 4 
-	  && ac_tlv_rhfp->value == ospf6_router_hardware_fingerprint ())
+	  && ac_tlv_rhfp->value == fingerprint)
       {
 	/* Matching fingerprints implies true self origination*/
 	zlog_warn("True self");
@@ -275,7 +280,14 @@ ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header)
 	}	
 
 	/* There is a conflict */
-	zlog_warn("Conflict");
+	zlog_warn ("Conflict");
+
+	/* If their fingerprint is smaller */
+	if (R_HW_FP_CMP (&ac_tlv_rhfp->value, &fingerprint) < 0)
+	{
+	  zlog_warn ("Not our problem (fingerprint)");
+	  return 0;
+	}
 
 	zlog_warn("Changing router-id");
 	ospf6_set_router_id (ospf6_generate_router_id ());
