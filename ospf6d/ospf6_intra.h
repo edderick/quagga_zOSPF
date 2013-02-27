@@ -150,12 +150,37 @@ struct ospf6_ac_tlv_header
   u_int16_t length;
 };
 
+/* TODO: May need to pull TLVs into a separate file */
+
 #define OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT       1U
 #define OSPF6_AC_TLV_TYPE1_LENGTH 4U
 struct ospf6_ac_tlv_router_hardware_fingerprint
 {
-	struct ospf6_ac_tlv_header header;
-	u_int32_t value;
+  struct ospf6_ac_tlv_header header;
+  u_int32_t value;
+};
+
+/* TBD-BY-ISNA-1 */
+#define OSPF6_AC_TLV_AGGREGATED_PREFIX	2U
+#define OSPF6_AC_TLV_TYPE2_LENGTH 4U
+struct ospf6_ac_tlv_aggregated_prefix
+{
+  struct ospf6_ac_tlv_header header;
+  u_int8_t prefix_length;
+  u_int8_t reserved[3];
+  u_int8_t prefix[16];
+};
+
+/* TBD-BY-IANA-2 */
+#define OSPF6_AC_TLV_ASSIGNED_PREFIX 3U
+#define OSPF6_AC_TLV_TYPE3_LENGTH 4U
+struct ospf6_ac_tlv_assigned_prefix
+{
+  struct ospf6_ac_tlv_header header;
+  u_int32_t interface_id;
+  u_int8_t prefix_length;
+  u_int8_t reserved[3];
+  u_int8_t prefix[16];
 };
 
 /* Intra-Area-Prefix-LSA */
