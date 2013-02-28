@@ -159,6 +159,16 @@ extern void zebra_router_id_update_read (struct stream *s, struct prefix *rid);
 extern int zapi_ipv4_route (u_char, struct zclient *, struct prefix_ipv4 *, 
                             struct zapi_ipv4 *);
 
+/***********************
+* Autoconf Extensions
+************************/
+extern int zebra_ipv6_addr_add_send (struct zclient *zclient, int addr, int interface);
+extern int zebra_ipv6_addr_del_send (struct zclient *zclient, int addr, int interface);
+extern int zebra_ipv6_nd_no_suppress_ra (struct zclient *zclient);
+extern int zebra_ipv6_nd_prefix (struct zclient *zclient, int addr, int interface);
+
+/*** END Autoconf Extensions ***/
+
 #ifdef HAVE_IPV6
 /* IPv6 prefix add and delete function prototype. */
 
