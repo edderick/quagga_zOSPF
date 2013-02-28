@@ -427,6 +427,12 @@ struct in_pktinfo
 #define ZEBRA_HELLO                       23
 #define ZEBRA_MESSAGE_MAX                 24
 
+/* XXX: Experimental message types */
+#define ZEBRA_IPV6_ADDR_ADD		  9001
+#define ZEBRA_IPV6_ADDR_DEL		  9002
+#define ZEBRA_IPV6_ND_NO_SUPPRESS	  9003
+#define ZEBRA_IPV6_ND_PREFIX_ADD	  9004
+
 /* Marker value used in new Zserv, in the byte location corresponding
  * the command value in the old zserv header. To allow old and new
  * Zserv headers to be distinguished from each other.

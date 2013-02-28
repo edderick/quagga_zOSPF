@@ -1102,6 +1102,44 @@ zread_hello (struct zserv *client)
     }
 }
 
+/***********************
+ * Autoconf Extensions
+ ***********************/
+
+/* Add an IPV6 Address to an interface */
+static int
+zread_ipv6_addr_add (struct zserv *client, u_short length)
+{
+  zlog_warn ("zread_ipv6_addr_add");
+  return 0;
+}
+
+/* Remove an IPV6 Address from an interface */
+static int 
+zread_ipv6_addr_del (struct zserv *client, u_short length)
+{
+  zlog_warn ("zread_ipv6_adr_del");
+  return 0;
+}
+
+/* Begin sending router advertisments */
+static int
+zread_ipv6_nd_no_suppress_ra (struct zserv *client, u_short length) 
+{
+  zlog_warn ("zread_ipv6_nd_no_suppress_ra");
+  return 0;
+}
+
+/* Assign a prefix to an interface */
+static int 
+zread_ipv6_nd_prefix (struct zserv *client, u_short length) 
+{
+  zlog_warn ("zread_ipv6_nd_prefix");
+  return 0;
+}
+
+/*** END Autoconf Extensions ***/
+
 /* If client sent routes of specific type, zebra removes it
  * and returns number of deleted routes.
  */
@@ -1336,6 +1374,20 @@ zebra_client_read (struct thread *thread)
     case ZEBRA_HELLO:
       zread_hello (client);
       break;
+#ifdef HAVE_IPV6
+    case ZEBRA_IPV6_ADDR_ADD:
+      zread_ipv6_addr_add (client, length);
+      break;
+    case ZEBRA_IPV6_ADDR_DEL:
+      zread_ipv6_addr_del (client, length);
+      break;
+    case ZEBRA_IPV6_ND_NO_SUPPRESS:
+      zread_ipv6_nd_no_suppress_ra (client, length);
+      break;
+    case ZEBRA_IPV6_ND_PREFIX_ADD:
+      zread_ipv6_nd_prefix (client, length);
+      break;
+#endif /* HAVE_IPV6 */
     default:
       zlog_info ("Zebra received unknown command %d", command);
       break;

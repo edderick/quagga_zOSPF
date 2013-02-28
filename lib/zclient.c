@@ -337,6 +337,42 @@ zebra_hello_send (struct zclient *zclient)
   return 0;
 }
 
+/***********************
+* Autoconf Extensions
+************************/
+/* TODO: Should we include a prefix length? */
+
+/* Send a Zebra message to add an IPv6 Address */
+static int 
+zebra_ipv6_addr_add_send (struct zclient *zclient, int addr, int interface)
+{
+return 0;
+}
+
+/* Send a Zebra message to remove an IPv6 Address */
+static int 
+zebra_ipv6_addr_del_send (struct zclient *zclient, int addr, int interface)
+{
+return 0;
+}
+
+/* TODO: Does this need a complete function; It doesn't require any parameteres */
+/* Send a Zebra message to turn on Router Advertisments */ 
+static int 
+zebra_ipv6_nd_no_suppress_ra (struct zclient *zclient) 
+{
+return 0;
+}
+
+/* TODO: Do we need to specify other parameters? e.g. TTL, prefix length */
+/* Send a Zebra message to add a prefix to the Router Advertisment */
+static int 
+zebra_ipv6_nd_prefix (struct zclient *zclient, int addr, int interface)
+{
+return 0;
+}
+/*** END Autoconf Extensions ***/
+
 /* Make connection to zebra daemon. */
 int
 zclient_start (struct zclient *zclient)
