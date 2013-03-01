@@ -94,7 +94,14 @@ ospf6_router_id_update_zebra (int command, struct zclient *zclient,
       ospf6_set_router_id ( (u_int32_t) router_id_zebra.s_addr);
     }
   }
-
+  
+  /* XXX: TESTING */
+  zlog_warn ("Testing messages");
+  zebra_ipv6_addr_add_send (zclient, 1,1);
+  zebra_ipv6_addr_del_send (zclient, 1,1);
+  zebra_ipv6_nd_no_suppress_ra (zclient);
+  zebra_ipv6_nd_prefix (zclient, 1,1);
+  
   return 0;
 }
 

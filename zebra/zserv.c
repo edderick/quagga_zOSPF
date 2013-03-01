@@ -1384,7 +1384,7 @@ zebra_client_read (struct thread *thread)
     case ZEBRA_IPV6_ND_NO_SUPPRESS:
       zread_ipv6_nd_no_suppress_ra (client, length);
       break;
-    case ZEBRA_IPV6_ND_PREFIX_ADD:
+    case ZEBRA_IPV6_ND_PREFIX:
       zread_ipv6_nd_prefix (client, length);
       break;
 #endif /* HAVE_IPV6 */

@@ -353,7 +353,7 @@ zebra_ipv6_addr_add_send (struct zclient *zclient, int addr, int interface)
 
   zclient_create_header (s, ZEBRA_IPV6_ADDR_ADD);
  
-  zlog_warn ("SENDING MESSAGE TO ZEBRA");
+  zlog_warn ("Sending zebra_ipv6_addr_add");
 
   return zclient_send_message(zclient);
 }
@@ -362,7 +362,16 @@ zebra_ipv6_addr_add_send (struct zclient *zclient, int addr, int interface)
 int 
 zebra_ipv6_addr_del_send (struct zclient *zclient, int addr, int interface)
 {
-  return 0;
+  struct stream *s;
+
+  s= zclient->obuf;
+  stream_reset (s);
+
+  zclient_create_header (s, ZEBRA_IPV6_ADDR_DEL);
+ 
+  zlog_warn ("Sending zebra_ipv6_addr_del");
+
+  return zclient_send_message(zclient);
 }
 
 /* TODO: Does this need a complete function; It doesn't require any parameteres */
@@ -370,7 +379,8 @@ zebra_ipv6_addr_del_send (struct zclient *zclient, int addr, int interface)
 int 
 zebra_ipv6_nd_no_suppress_ra (struct zclient *zclient) 
 {
-  return 0;
+  zlog_warn ("Sending zebra_ipv6_nd_no_suppress_ra");
+  return zebra_message_send (zclient, ZEBRA_IPV6_ND_NO_SUPPRESS);
 }
 
 /* TODO: Do we need to specify other parameters? e.g. TTL, prefix length */
@@ -378,7 +388,16 @@ zebra_ipv6_nd_no_suppress_ra (struct zclient *zclient)
 int 
 zebra_ipv6_nd_prefix (struct zclient *zclient, int addr, int interface)
 {
-  return 0;
+  struct stream *s;
+
+  s= zclient->obuf;
+  stream_reset (s);
+
+  zclient_create_header (s, ZEBRA_IPV6_ND_PREFIX);
+ 
+  zlog_warn ("Sending zebra_ipv6_nd_prefix");
+
+  return zclient_send_message(zclient);
 }
 /*** END Autoconf Extensions ***/
 
