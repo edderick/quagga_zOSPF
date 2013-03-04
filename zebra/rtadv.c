@@ -755,7 +755,6 @@ no_ipv6_nd_suppress_ra_no_vty (int ifindex)
   return CMD_SUCCESS;
 }
 
-
 DEFUN (ipv6_nd_ra_interval_msec,
        ipv6_nd_ra_interval_msec_cmd,
        "ipv6 nd ra-interval msec <70-1800000>",
@@ -1270,6 +1269,35 @@ DEFUN (ipv6_nd_prefix,
 	    }
 	}
     }
+
+  rtadv_prefix_set (zebra_if, &rp);
+
+  return CMD_SUCCESS;
+}
+
+/* XXX: Copy of above */
+/* TODO: Would a prefix pointer work? */
+/* Expose ipv6 nd prefix to the outside world */
+int 
+ipv6_nd_prefix_no_vty (int ifindex, struct prefix_ipv6 prefix)
+{
+  struct interface *ifp;
+  struct zebra_if *zebra_if;
+  struct rtadv_prefix rp;
+
+  ifp = (struct interface *) if_lookup_by_index (ifindex);
+  zebra_if = ifp->info;
+
+  rp.prefix = prefix;
+  
+  apply_mask_ipv6 (&rp.prefix); /* RFC4861 4.6.2 */
+  
+  /* Use defaults */
+  rp.AdvOnLinkFlag = 1;
+  rp.AdvAutonomousFlag = 1;
+  rp.AdvRouterAddressFlag = 0;
+  rp.AdvValidLifetime = RTADV_VALID_LIFETIME;
+  rp.AdvPreferredLifetime = RTADV_PREFERRED_LIFETIME;
 
   rtadv_prefix_set (zebra_if, &rp);
 

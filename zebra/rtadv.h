@@ -61,7 +61,9 @@ struct rtadv_prefix
 extern void rtadv_config_write (struct vty *, struct interface *);
 extern void rtadv_init (void);
 
+/* Autoconf extensions */
 int no_ipv6_nd_suppress_ra_no_vty (int ifindex);
+int ipv6_nd_prefix_no_vty (int ifindex, struct prefix_ipv6 prefix);
 
 /* RFC4584 Extension to Sockets API for Mobile IPv6 */
 

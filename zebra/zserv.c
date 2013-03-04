@@ -1132,6 +1132,7 @@ zread_ipv6_nd_no_suppress_ra (struct zserv *client, u_short length)
 
   s = client->ibuf;
   
+  /* Get interface from message */
   ifindex = stream_getl (s); 
 
   zlog_warn ("zread_ipv6_nd_no_suppress_ra: %d", ifindex);
@@ -1143,7 +1144,26 @@ zread_ipv6_nd_no_suppress_ra (struct zserv *client, u_short length)
 static int 
 zread_ipv6_nd_prefix (struct zserv *client, u_short length) 
 {
-  zlog_warn ("zread_ipv6_nd_prefix");
+  struct stream *s;
+  unsigned int ifindex;
+  struct prefix_ipv6 prefix;
+  int i;
+
+  s = client->ibuf;
+
+  /* Get interface from message */
+  ifindex = stream_getl (s);
+
+  /* Get prefix from message */
+  prefix.family = stream_getc (s);
+  prefix.prefixlen = stream_getc (s);
+  for (i = 0; i < 16; i++){
+    prefix.prefix.s6_addr[i] = stream_getc (s);
+    zlog_warn("byte[%d]:%d",i,prefix.prefix.s6_addr[i]);
+  }
+
+  zlog_warn ("zread_ipv6_nd_prefix: %d", ifindex);
+  ipv6_nd_prefix_no_vty (ifindex, prefix);
   return 0;
 }
 
