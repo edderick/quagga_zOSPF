@@ -721,6 +721,41 @@ DEFUN (no_ipv6_nd_suppress_ra,
   return CMD_SUCCESS;
 }
 
+/* XXX: A copy of above */
+/* Expose Unsupressing router advertisments to the outside world.*/
+int 
+no_ipv6_nd_suppress_ra_no_vty (int ifindex)
+{
+  struct interface *ifp;
+  struct zebra_if *zif;
+
+  ifp = if_lookup_by_index (ifindex);
+
+  /*ifp = vty->index;*/
+  zif = ifp->info;
+
+  if (if_is_loopback (ifp))
+    {
+      zlog_warn ("Invalid interface");
+      return CMD_WARNING;
+    }
+
+  if (! zif->rtadv.AdvSendAdvertisements)
+    {
+      zif->rtadv.AdvSendAdvertisements = 1;
+      zif->rtadv.AdvIntervalTimer = 0;
+      rtadv->adv_if_count++;
+
+      if_join_all_router (rtadv->sock, ifp);
+
+      if (rtadv->adv_if_count == 1)
+	rtadv_event (RTADV_START, rtadv->sock);
+    }
+
+  return CMD_SUCCESS;
+}
+
+
 DEFUN (ipv6_nd_ra_interval_msec,
        ipv6_nd_ra_interval_msec_cmd,
        "ipv6 nd ra-interval msec <70-1800000>",

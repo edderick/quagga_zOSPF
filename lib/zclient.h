@@ -164,7 +164,7 @@ extern int zapi_ipv4_route (u_char, struct zclient *, struct prefix_ipv4 *,
 ************************/
 extern int zebra_ipv6_addr_add_send (struct zclient *zclient, int addr, int interface);
 extern int zebra_ipv6_addr_del_send (struct zclient *zclient, int addr, int interface);
-extern int zebra_ipv6_nd_no_suppress_ra (struct zclient *zclient);
+extern int zebra_ipv6_nd_no_suppress_ra (struct zclient *zclient, int ifindex);
 extern int zebra_ipv6_nd_prefix (struct zclient *zclient, int addr, int interface);
 
 /*** END Autoconf Extensions ***/

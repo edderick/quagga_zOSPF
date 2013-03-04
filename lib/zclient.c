@@ -374,13 +374,25 @@ zebra_ipv6_addr_del_send (struct zclient *zclient, int addr, int interface)
   return zclient_send_message(zclient);
 }
 
-/* TODO: Does this need a complete function; It doesn't require any parameteres */
 /* Send a Zebra message to turn on Router Advertisments */ 
 int 
-zebra_ipv6_nd_no_suppress_ra (struct zclient *zclient) 
+zebra_ipv6_nd_no_suppress_ra (struct zclient *zclient, int ifindex) 
 {
+  struct stream *s;
+
+  s= zclient->obuf;
+  stream_reset (s);
+
+  zclient_create_header (s, ZEBRA_IPV6_ND_NO_SUPPRESS);
+
+  /* Add interface index to message */
+  stream_putl (s, ifindex);
+ 
+  /* Put length at the first point of the stream. */
+  stream_putw_at (s, 0, stream_get_endp (s));
+  
   zlog_warn ("Sending zebra_ipv6_nd_no_suppress_ra");
-  return zebra_message_send (zclient, ZEBRA_IPV6_ND_NO_SUPPRESS);
+  return zclient_send_message (zclient);
 }
 
 /* TODO: Do we need to specify other parameters? e.g. TTL, prefix length */
@@ -397,7 +409,7 @@ zebra_ipv6_nd_prefix (struct zclient *zclient, int addr, int interface)
  
   zlog_warn ("Sending zebra_ipv6_nd_prefix");
 
-  return zclient_send_message(zclient);
+  return zclient_send_message (zclient);
 }
 /*** END Autoconf Extensions ***/
 

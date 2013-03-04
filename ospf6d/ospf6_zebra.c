@@ -99,7 +99,7 @@ ospf6_router_id_update_zebra (int command, struct zclient *zclient,
   zlog_warn ("Testing messages");
   zebra_ipv6_addr_add_send (zclient, 1,1);
   zebra_ipv6_addr_del_send (zclient, 1,1);
-  zebra_ipv6_nd_no_suppress_ra (zclient);
+  zebra_ipv6_nd_no_suppress_ra (zclient, if_lookup_by_name("eth0")->ifindex);
   zebra_ipv6_nd_prefix (zclient, 1,1);
   
   return 0;

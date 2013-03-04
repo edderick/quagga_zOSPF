@@ -42,6 +42,7 @@
 #include "zebra/redistribute.h"
 #include "zebra/debug.h"
 #include "zebra/ipforward.h"
+#include "zebra/rtadv.h"
 
 /* Event list of zebra. */
 enum event { ZEBRA_SERV, ZEBRA_READ, ZEBRA_WRITE };
@@ -1126,7 +1127,15 @@ zread_ipv6_addr_del (struct zserv *client, u_short length)
 static int
 zread_ipv6_nd_no_suppress_ra (struct zserv *client, u_short length) 
 {
-  zlog_warn ("zread_ipv6_nd_no_suppress_ra");
+  struct stream *s;
+  unsigned int ifindex;
+
+  s = client->ibuf;
+  
+  ifindex = stream_getl (s); 
+
+  zlog_warn ("zread_ipv6_nd_no_suppress_ra: %d", ifindex);
+  no_ipv6_nd_suppress_ra_no_vty (ifindex);
   return 0;
 }
 
