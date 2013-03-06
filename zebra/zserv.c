@@ -1111,6 +1111,35 @@ zread_hello (struct zserv *client)
 static int
 zread_ipv6_addr_add (struct zserv *client, u_short length)
 {
+  struct stream *s;
+  unsigned int ifindex;
+  struct in6_addr addr;
+  int i;
+  struct interface *ifp;
+  char *addr_string;
+
+  s = client->ibuf;
+
+  /* Get interface from message */
+  ifindex = stream_getl (s);
+
+  /* Get address from message */
+  for (i = 0; i < 16; i++){
+    addr.s6_addr[i] = stream_getc (s);
+    zlog_warn("byte[%d]:%d", i, addr.s6_addr[i]);
+  }
+  
+  ifp = if_lookup_by_index (ifindex);
+  
+  /* TODO: Tidy this up */
+  /* Convert in6_addr to a string */
+  addr_string = inet_ntop(AF_INET6, &addr, (char *) malloc (sizeof (char) * (5 * 8 + 4)), sizeof (char) * (5 * 8)); 
+  
+  /* Attach prefix information (Always /64) */
+  strcat (addr_string, "/64");
+
+  ipv6_address_install (NULL, ifp, addr_string, NULL, NULL, 0); 
+
   zlog_warn ("zread_ipv6_addr_add");
   return 0;
 }
@@ -1119,6 +1148,36 @@ zread_ipv6_addr_add (struct zserv *client, u_short length)
 static int 
 zread_ipv6_addr_del (struct zserv *client, u_short length)
 {
+  struct stream *s;
+  unsigned int ifindex;
+  struct in6_addr addr;
+  int i;
+  struct interface *ifp;
+  char *addr_string;
+
+  s = client->ibuf;
+
+  /* Get interface from message */
+  ifindex = stream_getl (s);
+
+  /* Get address from message */
+  for (i = 0; i < 16; i++){
+    addr.s6_addr[i] = stream_getc (s);
+    zlog_warn("byte[%d]:%d", i, addr.s6_addr[i]);
+  }
+  
+  ifp = if_lookup_by_index (ifindex);
+
+  /* TODO: Tidy this up */
+
+  /* Convert in6_addr to a string */
+  addr_string = inet_ntop(AF_INET6, &addr, (char *) malloc (sizeof (char) * (5 * 8 + 4)), sizeof (char) * (5 * 8)); 
+  
+  /* Attach prefix information (Always /64) */
+  strcat (addr_string, "/64");
+
+  ipv6_address_uninstall (NULL, ifp, addr_string, NULL, NULL, 0); 
+
   zlog_warn ("zread_ipv6_adr_del");
   return 0;
 }

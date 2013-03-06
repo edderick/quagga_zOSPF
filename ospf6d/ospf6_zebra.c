@@ -95,16 +95,20 @@ ospf6_router_id_update_zebra (int command, struct zclient *zclient,
     }
   }
  
-  
-  struct prefix_ipv6 prefix;
-  char *s = "fcff::/64";
+  struct prefix_ipv6 addr;
+  char *s = "fc00::1/64";
 
-  str2prefix_ipv6 (s, &prefix);
+  str2prefix_ipv6(s, &addr);
+
+  struct prefix_ipv6 prefix;
+  char *t = "fcff::/64";
+
+  str2prefix_ipv6 (t, &prefix);
 
   /* XXX: TESTING */
   zlog_warn ("Testing messages");
-  zebra_ipv6_addr_add_send (zclient, 1,1);
-  zebra_ipv6_addr_del_send (zclient, 1,1);
+  zebra_ipv6_addr_add_send (zclient, if_lookup_by_name("eth1")->ifindex, &addr.prefix);
+  zebra_ipv6_addr_del_send (zclient, if_lookup_by_name("eth1")->ifindex, &addr.prefix);
   zebra_ipv6_nd_no_suppress_ra (zclient, if_lookup_by_name("eth1")->ifindex);
   zebra_ipv6_nd_prefix (zclient, if_lookup_by_name("eth1")->ifindex, &prefix);
   

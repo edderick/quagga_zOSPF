@@ -345,15 +345,27 @@ zebra_hello_send (struct zclient *zclient)
 
 /* Send a Zebra message to add an IPv6 Address */
 int 
-zebra_ipv6_addr_add_send (struct zclient *zclient, int addr, int interface)
+zebra_ipv6_addr_add_send (struct zclient *zclient, int ifindex, struct in6_addr *addr)
 {
   struct stream *s;
+  int i; 
 
   s= zclient->obuf;
   stream_reset (s);
 
   zclient_create_header (s, ZEBRA_IPV6_ADDR_ADD);
+
+  /* Add interface index to message */
+  stream_putl (s, ifindex);
  
+  /* Add ipv6 addr to message */
+  for (i = 0; i < 16; i++){
+    stream_putc (s, addr->s6_addr[i]);
+  }
+
+  /* Put length at the first point of the stream. */
+  stream_putw_at (s, 0, stream_get_endp (s));
+
   zlog_warn ("Sending zebra_ipv6_addr_add");
 
   return zclient_send_message(zclient);
@@ -361,15 +373,26 @@ zebra_ipv6_addr_add_send (struct zclient *zclient, int addr, int interface)
 
 /* Send a Zebra message to remove an IPv6 Address */
 int 
-zebra_ipv6_addr_del_send (struct zclient *zclient, int addr, int interface)
+zebra_ipv6_addr_del_send (struct zclient *zclient, int ifindex, struct in6_addr *addr)
 {
   struct stream *s;
+  int i;
 
   s= zclient->obuf;
   stream_reset (s);
 
   zclient_create_header (s, ZEBRA_IPV6_ADDR_DEL);
+ /* Add interface index to message */
+  stream_putl (s, ifindex);
  
+  /* Add ipv6 addr to message */
+  for (i = 0; i < 16; i++){
+    stream_putc (s, addr->s6_addr[i]);
+  }
+
+  /* Put length at the first point of the stream. */
+  stream_putw_at (s, 0, stream_get_endp (s));
+
   zlog_warn ("Sending zebra_ipv6_addr_del");
 
   return zclient_send_message(zclient);
