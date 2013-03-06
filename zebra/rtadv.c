@@ -686,23 +686,23 @@ DEFUN (ipv6_nd_suppress_ra,
   return CMD_SUCCESS;
 }
 
-DEFUN (no_ipv6_nd_suppress_ra,
-       no_ipv6_nd_suppress_ra_cmd,
-       "no ipv6 nd suppress-ra",
-       NO_STR
-       "Interface IPv6 config commands\n"
-       "Neighbor discovery\n"
-       "Suppress Router Advertisement\n")
+/* Starts originating router advertisments */
+int 
+no_ipv6_nd_suppress_ra_func (struct vty *vty, struct interface *ifp)
 {
-  struct interface *ifp;
   struct zebra_if *zif;
 
-  ifp = vty->index;
   zif = ifp->info;
 
   if (if_is_loopback (ifp))
     {
-      vty_out (vty, "Invalid interface%s", VTY_NEWLINE);
+      if (vty == NULL){
+	zlog_warn ("Invalid interface");
+      }
+      else 
+      {
+	vty_out (vty, "Invalid interface%s", VTY_NEWLINE);
+      }
       return CMD_WARNING;
     }
 
@@ -721,38 +721,15 @@ DEFUN (no_ipv6_nd_suppress_ra,
   return CMD_SUCCESS;
 }
 
-/* XXX: A copy of above */
-/* Expose Unsupressing router advertisments to the outside world.*/
-int 
-no_ipv6_nd_suppress_ra_no_vty (int ifindex)
+DEFUN (no_ipv6_nd_suppress_ra,
+       no_ipv6_nd_suppress_ra_cmd,
+       "no ipv6 nd suppress-ra",
+       NO_STR
+       "Interface IPv6 config commands\n"
+       "Neighbor discovery\n"
+       "Suppress Router Advertisement\n")
 {
-  struct interface *ifp;
-  struct zebra_if *zif;
-
-  ifp = if_lookup_by_index (ifindex);
-
-  /*ifp = vty->index;*/
-  zif = ifp->info;
-
-  if (if_is_loopback (ifp))
-    {
-      zlog_warn ("Invalid interface");
-      return CMD_WARNING;
-    }
-
-  if (! zif->rtadv.AdvSendAdvertisements)
-    {
-      zif->rtadv.AdvSendAdvertisements = 1;
-      zif->rtadv.AdvIntervalTimer = 0;
-      rtadv->adv_if_count++;
-
-      if_join_all_router (rtadv->sock, ifp);
-
-      if (rtadv->adv_if_count == 1)
-	rtadv_event (RTADV_START, rtadv->sock);
-    }
-
-  return CMD_SUCCESS;
+  no_ipv6_nd_suppress_ra_func (vty, vty->index);
 }
 
 DEFUN (ipv6_nd_ra_interval_msec,
@@ -1275,20 +1252,17 @@ DEFUN (ipv6_nd_prefix,
   return CMD_SUCCESS;
 }
 
-/* XXX: Copy of above */
-/* TODO: Would a prefix pointer work? */
+/* XXX: Consider reducing code repetition */
 /* Expose ipv6 nd prefix to the outside world */
 int 
-ipv6_nd_prefix_no_vty (int ifindex, struct prefix_ipv6 prefix)
+ipv6_nd_prefix_no_vty (struct interface *ifp, struct prefix_ipv6 *prefix)
 {
-  struct interface *ifp;
   struct zebra_if *zebra_if;
   struct rtadv_prefix rp;
 
-  ifp = (struct interface *) if_lookup_by_index (ifindex);
   zebra_if = ifp->info;
 
-  rp.prefix = prefix;
+  rp.prefix = *prefix;
   
   apply_mask_ipv6 (&rp.prefix); /* RFC4861 4.6.2 */
   
@@ -1301,7 +1275,7 @@ ipv6_nd_prefix_no_vty (int ifindex, struct prefix_ipv6 prefix)
 
   rtadv_prefix_set (zebra_if, &rp);
 
-  /* Originate rtadv immediately since it has chnaged */
+  /* Originate rtadv immediately since it has changed */
   rtadv_send_packet (rtadv->sock, ifp);
 
   return CMD_SUCCESS;

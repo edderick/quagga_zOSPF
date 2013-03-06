@@ -1195,7 +1195,7 @@ zread_ipv6_nd_no_suppress_ra (struct zserv *client, u_short length)
   ifindex = stream_getl (s); 
 
   zlog_warn ("zread_ipv6_nd_no_suppress_ra: %d", ifindex);
-  no_ipv6_nd_suppress_ra_no_vty (ifindex);
+  no_ipv6_nd_suppress_ra_func (NULL, if_lookup_by_index(ifindex));
   return 0;
 }
 
@@ -1222,7 +1222,7 @@ zread_ipv6_nd_prefix (struct zserv *client, u_short length)
   }
 
   zlog_warn ("zread_ipv6_nd_prefix: %d", ifindex);
-  ipv6_nd_prefix_no_vty (ifindex, prefix);
+  ipv6_nd_prefix_no_vty (if_lookup_by_index(ifindex), &prefix);
   return 0;
 }
 
