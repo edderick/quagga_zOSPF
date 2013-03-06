@@ -1301,6 +1301,9 @@ ipv6_nd_prefix_no_vty (int ifindex, struct prefix_ipv6 prefix)
 
   rtadv_prefix_set (zebra_if, &rp);
 
+  /* Originate rtadv immediately since it has chnaged */
+  rtadv_send_packet (rtadv->sock, ifp);
+
   return CMD_SUCCESS;
 }
 
