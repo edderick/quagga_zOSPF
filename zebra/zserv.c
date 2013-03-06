@@ -1126,7 +1126,6 @@ zread_ipv6_addr_add (struct zserv *client, u_short length)
   /* Get address from message */
   for (i = 0; i < 16; i++){
     addr.s6_addr[i] = stream_getc (s);
-    zlog_warn("byte[%d]:%d", i, addr.s6_addr[i]);
   }
   
   ifp = if_lookup_by_index (ifindex);
@@ -1139,8 +1138,6 @@ zread_ipv6_addr_add (struct zserv *client, u_short length)
   strcat (addr_string, "/64");
 
   ipv6_address_install (NULL, ifp, addr_string, NULL, NULL, 0); 
-
-  zlog_warn ("zread_ipv6_addr_add");
   return 0;
 }
 
@@ -1163,7 +1160,6 @@ zread_ipv6_addr_del (struct zserv *client, u_short length)
   /* Get address from message */
   for (i = 0; i < 16; i++){
     addr.s6_addr[i] = stream_getc (s);
-    zlog_warn("byte[%d]:%d", i, addr.s6_addr[i]);
   }
   
   ifp = if_lookup_by_index (ifindex);
@@ -1177,8 +1173,6 @@ zread_ipv6_addr_del (struct zserv *client, u_short length)
   strcat (addr_string, "/64");
 
   ipv6_address_uninstall (NULL, ifp, addr_string, NULL, NULL, 0); 
-
-  zlog_warn ("zread_ipv6_adr_del");
   return 0;
 }
 
@@ -1194,7 +1188,6 @@ zread_ipv6_nd_no_suppress_ra (struct zserv *client, u_short length)
   /* Get interface from message */
   ifindex = stream_getl (s); 
 
-  zlog_warn ("zread_ipv6_nd_no_suppress_ra: %d", ifindex);
   no_ipv6_nd_suppress_ra_func (NULL, if_lookup_by_index(ifindex));
   return 0;
 }
@@ -1218,10 +1211,8 @@ zread_ipv6_nd_prefix (struct zserv *client, u_short length)
   prefix.prefixlen = stream_getc (s);
   for (i = 0; i < 16; i++){
     prefix.prefix.s6_addr[i] = stream_getc (s);
-    zlog_warn("byte[%d]:%d",i,prefix.prefix.s6_addr[i]);
   }
 
-  zlog_warn ("zread_ipv6_nd_prefix: %d", ifindex);
   ipv6_nd_prefix_no_vty (if_lookup_by_index(ifindex), &prefix);
   return 0;
 }
