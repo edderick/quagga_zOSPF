@@ -1377,7 +1377,7 @@ DEFUN (no_ip_address_label,
 #endif /* HAVE_NETLINK */
 
 #ifdef HAVE_IPV6
-static int
+int
 ipv6_address_install (struct vty *vty, struct interface *ifp,
 		      const char *addr_str, const char *peer_str,
 		      const char *label, int secondary)
@@ -1390,7 +1390,14 @@ ipv6_address_install (struct vty *vty, struct interface *ifp,
   ret = str2prefix_ipv6 (addr_str, &cp);
   if (ret <= 0)
     {
-      vty_out (vty, "%% Malformed address %s", VTY_NEWLINE);
+      if (vty != NULL) 
+      {
+	vty_out (vty, "%% Malformed address %s", VTY_NEWLINE);
+      }
+      else 
+      {
+	zlog_warn("Malformed address");
+      }
       return CMD_WARNING;
     }
 
@@ -1436,8 +1443,16 @@ ipv6_address_install (struct vty *vty, struct interface *ifp,
 
       if (ret < 0)
 	{
-	  vty_out (vty, "%% Can't set interface IP address: %s.%s", 
-		   safe_strerror(errno), VTY_NEWLINE);
+	  if (vty != NULL) 
+	  {
+	    vty_out (vty, "%% Can't set interface IP address: %s.%s", 
+	  	   safe_strerror(errno), VTY_NEWLINE);
+	  }
+	  else
+	  {
+	    zlog_warn ("Can't set interface IP address: %s.", 
+		   safe_strerror(errno));
+	  }
 	  return CMD_WARNING;
 	}
 
@@ -1455,10 +1470,10 @@ ipv6_address_install (struct vty *vty, struct interface *ifp,
   return CMD_SUCCESS;
 }
 
-static int
+int
 ipv6_address_uninstall (struct vty *vty, struct interface *ifp,
 			const char *addr_str, const char *peer_str,
-			const char *label, int secondry)
+			const char *label, int secondary)
 {
   struct prefix_ipv6 cp;
   struct connected *ifc;
@@ -1468,7 +1483,14 @@ ipv6_address_uninstall (struct vty *vty, struct interface *ifp,
   ret = str2prefix_ipv6 (addr_str, &cp);
   if (ret <= 0)
     {
-      vty_out (vty, "%% Malformed address %s", VTY_NEWLINE);
+      if (vty != NULL)
+      {
+	vty_out (vty, "%% Malformed address %s", VTY_NEWLINE);
+      }
+      else 
+      {
+	zlog_warn ("Malformed address");
+      }
       return CMD_WARNING;
     }
 
@@ -1476,7 +1498,14 @@ ipv6_address_uninstall (struct vty *vty, struct interface *ifp,
   ifc = connected_check (ifp, (struct prefix *) &cp);
   if (! ifc)
     {
-      vty_out (vty, "%% Can't find address%s", VTY_NEWLINE);
+      if (vty != NULL) 
+      {
+	vty_out (vty, "%% Can't find address%s", VTY_NEWLINE);
+      }
+      else 
+      {
+	zlog_warn ("Can't find address");
+      }
       return CMD_WARNING;
     }
 
@@ -1497,9 +1526,17 @@ ipv6_address_uninstall (struct vty *vty, struct interface *ifp,
   ret = if_prefix_delete_ipv6 (ifp, ifc);
   if (ret < 0)
     {
-      vty_out (vty, "%% Can't unset interface IP address: %s.%s", 
+      if (vty != NULL)
+      {
+	vty_out (vty, "%% Can't unset interface IP address: %s.%s", 
 	       safe_strerror(errno), VTY_NEWLINE);
-      return CMD_WARNING;
+      } 
+      else 
+      {
+	zlog_warn ("Can't unset interface IP address: %s.", 
+	      safe_strerror(errno));
+      }
+     return CMD_WARNING;
     }
 
   /* Redistribute this information. */

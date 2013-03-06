@@ -241,4 +241,11 @@ extern int ifaddr_proc_ipv6 (void);
 extern int if_kvm_get_mtu (struct interface *);
 #endif /* BSDI */
 
+#ifdef HAVE_IPV6
+int ipv6_address_install (struct vty *vty, struct interface *ifp, const char *addr_str, 
+  const char *peer_str, const char *label, int secondary);
+int ipv6_address_uninstall (struct vty *vty, struct interface *ifp, const char *addr_str, 
+  const char *peer_str, const char *label, int secondary);
+#endif /* HAVE_IPV6 */
+
 #endif /* _ZEBRA_INTERFACE_H */
