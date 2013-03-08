@@ -5,6 +5,7 @@
 #include "thread.h"
 #include "vty.h"
 #include "prefix.h"
+#include "command.h"
 
 #include "ospf6_top.h"
 #include "ospf6_interface.h"
@@ -304,4 +305,43 @@ ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header)
   /* There must have been a problem */
   zlog_warn ("No rhwfp tlv found");
   return 1;
+}
+
+/* Add and aggregate prefix */
+DEFUN (ipv6_aggregate_prefix,
+       ipv6_aggregate_prefix_cmd,
+       "ipv6 aggregate-prefix X:X::X:X/M",
+       OSPF6_STR)
+{
+  struct prefix_ipv6 prefix;
+
+  str2prefix_ipv6 (argv[0], &prefix);
+
+  zlog_warn (argv[0]);
+
+  return CMD_SUCCESS;
+}
+
+/* Add and aggregate prefix */
+DEFUN (no_ipv6_aggregate_prefix,
+       no_ipv6_aggregate_prefix_cmd,
+       "no ipv6 aggregate-prefix X:X::X:X/M",
+       OSPF6_STR)
+{
+  struct prefix_ipv6 prefix;
+
+  str2prefix_ipv6 (argv[0], &prefix);
+
+  zlog_warn (argv[0]);
+
+  return CMD_SUCCESS;
+}
+
+
+/* Install autoconf related commands. */
+void 
+ospf6_auto_init (void) 
+{
+  install_element (CONFIG_NODE, &ipv6_aggregate_prefix_cmd);
+  install_element (CONFIG_NODE, &no_ipv6_aggregate_prefix_cmd);
 }

@@ -44,6 +44,8 @@
 #include "ospf6_flood.h"
 #include "ospf6d.h"
 
+#include "ospf6_auto.h"
+
 #ifdef HAVE_SNMP
 #include "ospf6_snmp.h"
 #endif /*HAVE_SNMP*/
@@ -1765,6 +1767,8 @@ ospf6_init (void)
   ospf6_interface_init ();
   ospf6_neighbor_init ();
   ospf6_zebra_init ();
+
+  ospf6_auto_init ();
 
   ospf6_lsa_init ();
   ospf6_spf_init ();
