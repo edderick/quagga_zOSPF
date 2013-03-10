@@ -6,6 +6,7 @@
 #include "vty.h"
 #include "prefix.h"
 #include "command.h"
+#include "if.h"
 
 #include "ospf6_top.h"
 #include "ospf6_interface.h"
@@ -307,34 +308,113 @@ ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header)
   return 1;
 }
 
-/* Add and aggregate prefix */
-DEFUN (ipv6_aggregate_prefix,
-       ipv6_aggregate_prefix_cmd,
-       "ipv6 aggregate-prefix X:X::X:X/M",
+/* Add an aggregate prefix */
+DEFUN (ipv6_allocate_prefix,
+       ipv6_allocate_prefix_cmd,
+       "ipv6 allocate-prefix X:X::X:X/M",
        OSPF6_STR)
 {
   struct prefix_ipv6 prefix;
+  struct ospf6_allocated_prefix *ap; 
 
   str2prefix_ipv6 (argv[0], &prefix);
+
+  ap = malloc (sizeof (struct ospf6_allocated_prefix) );
+
+  ap->prefix = prefix;
+  ap->source = OSPF6_PREFIX_SOURCE_CONFIGURED; 
+
+  listnode_add (ospf6->allocated_prefix_list, ap); 
 
   zlog_warn (argv[0]);
 
   return CMD_SUCCESS;
 }
 
-/* Add and aggregate prefix */
-DEFUN (no_ipv6_aggregate_prefix,
-       no_ipv6_aggregate_prefix_cmd,
-       "no ipv6 aggregate-prefix X:X::X:X/M",
+/* Remove an aggregate prefix */
+DEFUN (no_ipv6_allocate_prefix,
+       no_ipv6_allocate_prefix_cmd,
+       "no ipv6 allocate-prefix X:X::X:X/M",
        OSPF6_STR)
 {
+  struct listnode *node, *nextnode;
+  struct ospf6_allocated_prefix *data;
   struct prefix_ipv6 prefix;
 
   str2prefix_ipv6 (argv[0], &prefix);
 
+  for (ALL_LIST_ELEMENTS (ospf6->allocated_prefix_list, node, nextnode, data)) 
+  {
+    if (IPV6_ADDR_SAME (&data->prefix.prefix, &prefix.prefix))
+    {
+      listnode_delete (ospf6->allocated_prefix_list, data);
+    }
+  }
+
   zlog_warn (argv[0]);
 
   return CMD_SUCCESS;
+}
+
+/* List all prefixes allocated to this router */
+DEFUN (show_ipv6_allocated_prefix, 
+       show_ipv6_allocated_prefix_cmd, 
+       "show ipv6 ospf6 prefixes allocated",
+       OSPF6_STR)
+{
+  struct listnode *node, *nextnode;
+  struct ospf6_allocated_prefix *data;
+
+  vty_out (vty, "Allocated Prefixes: %s", VTY_NEWLINE);
+  for (ALL_LIST_ELEMENTS (ospf6->allocated_prefix_list, node, nextnode, data)) 
+  {
+    vty_out (vty, "Source : %d%s", data->source, VTY_NEWLINE); 
+  }
+}
+
+/* List all known aggregated prefixes */
+DEFUN (show_ipv6_aggregated_prefix, 
+       show_ipv6_aggregated_prefix_cmd, 
+       "show ipv6 ospf6 prefixes aggregated",
+       OSPF6_STR)
+{
+  struct listnode *node, *nextnode;
+  struct ospf6_aggregated_prefix *data;
+
+  vty_out (vty, "Aggregated Prefixes: %s", VTY_NEWLINE);
+
+  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nextnode, data)) 
+  {
+    vty_out (vty, "Advertising router id: %d", data->advertising_router_id);
+    /* TODO: list out all aggregate prefixes known about */
+    /* Include where they are originated from */
+  }
+}
+
+/* Show all prefixes assigned to a given interface */
+DEFUN (show_ipv6_assigned_prefix, 
+       show_ipv6_assigned_prefix_cmd, 
+       "show ipv6 ospf6 prefixes assigned IFNAME",
+       OSPF6_STR)
+{
+  struct listnode *node, *nextnode;
+  struct ospf6_assigned_prefix *data;
+  char *ifname;
+  struct interface *ifp;
+  struct ospf6_interface *interface;  
+
+  ifname = argv[0];
+  ifp = if_lookup_by_name (ifname);
+  interface = ospf6_interface_lookup_by_ifindex(ifp->ifindex);
+
+  vty_out (vty, "Assigned Prefixes for %s: %s", ifname, VTY_NEWLINE);
+  
+  for (ALL_LIST_ELEMENTS (ospf6->allocated_prefix_list, node, nextnode, data)) 
+  {
+    vty_out (vty, "Originating router id: %d", data->assigning_router_id);
+    /* TODO: list out all assigned prefixes for interface */
+    /* Include who assigned them */
+  }
 }
 
 
@@ -342,6 +422,10 @@ DEFUN (no_ipv6_aggregate_prefix,
 void 
 ospf6_auto_init (void) 
 {
-  install_element (CONFIG_NODE, &ipv6_aggregate_prefix_cmd);
-  install_element (CONFIG_NODE, &no_ipv6_aggregate_prefix_cmd);
+  install_element (CONFIG_NODE, &ipv6_allocate_prefix_cmd);
+  install_element (CONFIG_NODE, &no_ipv6_allocate_prefix_cmd);
+
+  install_element (VIEW_NODE, &show_ipv6_allocated_prefix_cmd); 
+  install_element (VIEW_NODE, &show_ipv6_aggregated_prefix_cmd); 
+  install_element (VIEW_NODE, &show_ipv6_assigned_prefix_cmd); 
 }

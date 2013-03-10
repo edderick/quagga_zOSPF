@@ -39,6 +39,12 @@ struct ospf6
   /* list of areas */
   struct list *area_list;
 
+  /* list of allocated prefixes */
+  struct list *allocated_prefix_list;
+
+  /* list of all known aggregated prefixes */
+  struct list *aggregated_prefix_list;
+
   /* AS scope link state database */
   struct ospf6_lsdb *lsdb;
   struct ospf6_lsdb *lsdb_self;

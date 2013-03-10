@@ -48,6 +48,9 @@ struct ospf6_interface
   /* linklocal address of this I/F */
   struct in6_addr *linklocal_addr;
 
+  /* list of prefixes assigned to this I/F */
+  struct list *assigned_prefix_list;
+
   /* Interface ID; use interface->ifindex */
 
   /* ospf6 instance id */

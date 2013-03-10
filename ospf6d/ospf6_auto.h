@@ -1,6 +1,31 @@
 #ifndef OSPF6_AUTO_H
 #define OSPF6_AUTO_H
 
+/* Prefix that has been given to OSPF6d to distribute */
+struct ospf6_allocated_prefix 
+{
+  struct prefix_ipv6 prefix;
+  int source;
+};
+
+#define OSPF6_PREFIX_SOURCE_DHCP6_PD 0
+#define OSPF6_PREFIX_SOURCE_CONFIGURED 1
+#define OSPF6_PREFIX_SORUCE_GENERATED 2
+
+/* Prefix that has been allocated to some router in the AS */
+struct ospf6_aggregated_prefix 
+{
+  struct prefix_ipv6 prefix;
+  u_int32_t advertising_router_id;
+};
+
+/* Prefix that has been assigned to a link by some router */
+struct ospf6_assigned_prefix 
+{
+  struct prefix_ipv6 prefix;
+  u_int32_t assigning_router_id;
+};
+
 u_int32_t ospf6_generate_router_id ();
 u_int32_t ospf6_router_hardware_fingerprint (); 
 void ospf6_init_seed ();
