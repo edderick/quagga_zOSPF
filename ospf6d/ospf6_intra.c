@@ -649,6 +649,33 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
       
       current += sizeof (struct ospf6_ac_tlv_router_hardware_fingerprint);
     }
+    else if (ac_tlv_header->type == OSPF6_AC_TLV_AGGREGATED_PREFIX)
+    {
+      struct ospf6_ac_tlv_aggregated_prefix *ac_tlv_ag_p 
+	= (struct ospf6_ac_tlv_aggregated_prefix * ) current;
+	
+      snprintf(name, sizeof (name), "Aggregated Prefix");
+      
+      vty_out (vty, "    Type: %s%s", name, VNL);
+      vty_out (vty, "    Length: %d%s", ac_tlv_header->length, VNL);
+      //vty_out (vty, "	 Prefix: %s/%s%s",  
+    
+      current += sizeof (struct ospf6_ac_tlv_aggregated_prefix);
+  
+    }
+    else if (ac_tlv_header->type == OSPF6_AC_TLV_ASSIGNED_PREFIX)
+    {
+      struct ospf6_ac_tlv_assigned_prefix *ac_tlv_as_p
+	= (struct ospf6_ac_tlv_assigned_prefix) current;
+  
+      snprintf(name, sizeof (name), "Assigned Prefix");
+
+      vty_out (vty, "    Type: %s%s", name, VNL);
+      vty_out (vty, "    Length: %d%s", ac_tlv_header->length, VNL);
+
+      current += sizeof (struct ospf6_ac_tlv_assigned_prefix);
+    
+    }
     else
     {
       vty_out (vty, "    Unknown AC-LSA Type %s", VNL);
