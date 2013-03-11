@@ -652,7 +652,7 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
     else if (ac_tlv_header->type == OSPF6_AC_TLV_AGGREGATED_PREFIX)
     {
       struct ospf6_ac_tlv_aggregated_prefix *ac_tlv_ag_p 
-	= (struct ospf6_ac_tlv_aggregated_prefix * ) current;
+	= (struct ospf6_ac_tlv_aggregated_prefix *) current;
 	
       snprintf(name, sizeof (name), "Aggregated Prefix");
       
@@ -666,7 +666,7 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
     else if (ac_tlv_header->type == OSPF6_AC_TLV_ASSIGNED_PREFIX)
     {
       struct ospf6_ac_tlv_assigned_prefix *ac_tlv_as_p
-	= (struct ospf6_ac_tlv_assigned_prefix) current;
+	= (struct ospf6_ac_tlv_assigned_prefix *) current;
   
       snprintf(name, sizeof (name), "Assigned Prefix");
 
