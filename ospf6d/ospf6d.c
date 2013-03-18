@@ -163,6 +163,8 @@ parse_type_spec (int argc, const char *argv[])
     type = htons (OSPF6_LSTYPE_INTER_PREFIX);
   else if (! strcmp (argv[0], "link"))
     type = htons (OSPF6_LSTYPE_LINK);
+  else if (! strcmp (argv[0], "auto-config"))
+    type = htons (OSPF6_LSTYPE_AC);
   return type;
 }
 
@@ -224,7 +226,7 @@ DEFUN (show_ipv6_ospf6_database_type,
        show_ipv6_ospf6_database_type_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix)",
+       "auto-config|group-membership|type-7|link|intra-prefix)",
        SHOW_STR
        IPV6_STR
        OSPF6_STR
@@ -234,6 +236,7 @@ DEFUN (show_ipv6_ospf6_database_type,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Confif LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -294,7 +297,7 @@ ALIAS (show_ipv6_ospf6_database_type,
        show_ipv6_ospf6_database_type_detail_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) "
+       "auto-config|group-membership|type-7|link|intra-prefix) "
        "(detail|dump|internal)",
        SHOW_STR
        IPV6_STR
@@ -305,6 +308,7 @@ ALIAS (show_ipv6_ospf6_database_type,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -510,7 +514,7 @@ DEFUN (show_ipv6_ospf6_database_type_id,
        show_ipv6_ospf6_database_type_id_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) A.B.C.D",
+       "auto-config|group-membership|type-7|link|intra-prefix) A.B.C.D",
        SHOW_STR
        IPV6_STR
        OSPF6_STR
@@ -520,6 +524,7 @@ DEFUN (show_ipv6_ospf6_database_type_id,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -592,7 +597,7 @@ ALIAS (show_ipv6_ospf6_database_type_id,
        show_ipv6_ospf6_database_type_id_detail_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) A.B.C.D "
+       "auto-config|group-membership|type-7|link|intra-prefix) A.B.C.D "
        "(detail|dump|internal)",
        SHOW_STR
        IPV6_STR
@@ -603,6 +608,7 @@ ALIAS (show_ipv6_ospf6_database_type_id,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -617,7 +623,7 @@ ALIAS (show_ipv6_ospf6_database_type_id,
        show_ipv6_ospf6_database_type_linkstate_id_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) linkstate-id A.B.C.D",
+       "auto-config|group-membership|type-7|link|intra-prefix) linkstate-id A.B.C.D",
        SHOW_STR
        IPV6_STR
        OSPF6_STR
@@ -627,6 +633,7 @@ ALIAS (show_ipv6_ospf6_database_type_id,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -639,7 +646,7 @@ ALIAS (show_ipv6_ospf6_database_type_id,
        show_ipv6_ospf6_database_type_linkstate_id_detail_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) linkstate-id A.B.C.D "
+       "auto-config|group-membership|type-7|link|intra-prefix) linkstate-id A.B.C.D "
        "(detail|dump|internal)",
        SHOW_STR
        IPV6_STR
@@ -650,6 +657,7 @@ ALIAS (show_ipv6_ospf6_database_type_id,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -665,7 +673,7 @@ DEFUN (show_ipv6_ospf6_database_type_router,
        show_ipv6_ospf6_database_type_router_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) * A.B.C.D",
+       "auto-config|group-membership|type-7|link|intra-prefix) * A.B.C.D",
        SHOW_STR
        IPV6_STR
        OSPF6_STR
@@ -675,6 +683,7 @@ DEFUN (show_ipv6_ospf6_database_type_router,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -748,7 +757,7 @@ ALIAS (show_ipv6_ospf6_database_type_router,
        show_ipv6_ospf6_database_type_router_detail_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) * A.B.C.D "
+       "auto-config|group-membership|type-7|link|intra-prefix) * A.B.C.D "
        "(detail|dump|internal)",
        SHOW_STR
        IPV6_STR
@@ -759,6 +768,7 @@ ALIAS (show_ipv6_ospf6_database_type_router,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -774,7 +784,7 @@ ALIAS (show_ipv6_ospf6_database_type_router,
        show_ipv6_ospf6_database_type_adv_router_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) adv-router A.B.C.D",
+       "auto-config|group-membership|type-7|link|intra-prefix) adv-router A.B.C.D",
        SHOW_STR
        IPV6_STR
        OSPF6_STR
@@ -784,6 +794,7 @@ ALIAS (show_ipv6_ospf6_database_type_router,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -796,7 +807,7 @@ ALIAS (show_ipv6_ospf6_database_type_router,
        show_ipv6_ospf6_database_type_adv_router_detail_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) adv-router A.B.C.D "
+       "auto-config|group-membership|type-7|link|intra-prefix) adv-router A.B.C.D "
        "(detail|dump|internal)",
        SHOW_STR
        IPV6_STR
@@ -807,6 +818,7 @@ ALIAS (show_ipv6_ospf6_database_type_router,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -988,7 +1000,7 @@ DEFUN (show_ipv6_ospf6_database_type_id_router,
        show_ipv6_ospf6_database_type_id_router_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) A.B.C.D A.B.C.D",
+       "auto-config|group-membership|type-7|link|intra-prefix) A.B.C.D A.B.C.D",
        SHOW_STR
        IPV6_STR
        OSPF6_STR
@@ -998,6 +1010,7 @@ DEFUN (show_ipv6_ospf6_database_type_id_router,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -1082,7 +1095,7 @@ ALIAS (show_ipv6_ospf6_database_type_id_router,
        show_ipv6_ospf6_database_type_id_router_detail_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) A.B.C.D A.B.C.D "
+       "auto-config|group-membership|type-7|link|intra-prefix) A.B.C.D A.B.C.D "
        "(dump|internal)",
        SHOW_STR
        IPV6_STR
@@ -1093,6 +1106,7 @@ ALIAS (show_ipv6_ospf6_database_type_id_router,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -1107,7 +1121,7 @@ DEFUN (show_ipv6_ospf6_database_type_adv_router_linkstate_id,
        show_ipv6_ospf6_database_type_adv_router_linkstate_id_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) "
+       "auto-config|group-membership|type-7|link|intra-prefix) "
        "adv-router A.B.C.D linkstate-id A.B.C.D",
        SHOW_STR
        IPV6_STR
@@ -1118,6 +1132,7 @@ DEFUN (show_ipv6_ospf6_database_type_adv_router_linkstate_id,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -1204,7 +1219,7 @@ ALIAS (show_ipv6_ospf6_database_type_adv_router_linkstate_id,
        show_ipv6_ospf6_database_type_adv_router_linkstate_id_detail_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) "
+       "auto-config|group-membership|type-7|link|intra-prefix) "
        "adv-router A.B.C.D linkstate-id A.B.C.D "
        "(dump|internal)",
        SHOW_STR
@@ -1217,6 +1232,7 @@ ALIAS (show_ipv6_ospf6_database_type_adv_router_linkstate_id,
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
        "Display Group-Membership LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
        "Display Intra-Area-Prefix LSAs\n"
@@ -1290,7 +1306,7 @@ DEFUN (show_ipv6_ospf6_database_type_self_originated,
        show_ipv6_ospf6_database_type_self_originated_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) self-originated",
+       "auto-config|group-membership|type-7|link|intra-prefix) self-originated",
        SHOW_STR
        IPV6_STR
        OSPF6_STR
@@ -1300,6 +1316,7 @@ DEFUN (show_ipv6_ospf6_database_type_self_originated,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -1364,7 +1381,7 @@ ALIAS (show_ipv6_ospf6_database_type_self_originated,
        show_ipv6_ospf6_database_type_self_originated_detail_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) self-originated "
+       "auto-config|group-membership|type-7|link|intra-prefix) self-originated "
        "(detail|dump|internal)",
        SHOW_STR
        IPV6_STR
@@ -1375,6 +1392,7 @@ ALIAS (show_ipv6_ospf6_database_type_self_originated,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -1389,7 +1407,7 @@ DEFUN (show_ipv6_ospf6_database_type_self_originated_linkstate_id,
        show_ipv6_ospf6_database_type_self_originated_linkstate_id_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) self-originated "
+       "auto-config|group-membership|type-7|link|intra-prefix) self-originated "
        "linkstate-id A.B.C.D",
        SHOW_STR
        IPV6_STR
@@ -1400,6 +1418,7 @@ DEFUN (show_ipv6_ospf6_database_type_self_originated_linkstate_id,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -1477,7 +1496,7 @@ ALIAS (show_ipv6_ospf6_database_type_self_originated_linkstate_id,
        show_ipv6_ospf6_database_type_self_originated_linkstate_id_detail_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) self-originated "
+       "auto-config|group-membership|type-7|link|intra-prefix) self-originated "
        "linkstate-id A.B.C.D (detail|dump|internal)",
        SHOW_STR
        IPV6_STR
@@ -1488,6 +1507,7 @@ ALIAS (show_ipv6_ospf6_database_type_self_originated_linkstate_id,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -1504,7 +1524,7 @@ DEFUN (show_ipv6_ospf6_database_type_id_self_originated,
        show_ipv6_ospf6_database_type_id_self_originated_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) A.B.C.D self-originated",
+       "auto-config|group-membership|type-7|link|intra-prefix) A.B.C.D self-originated",
        SHOW_STR
        IPV6_STR
        OSPF6_STR
@@ -1514,6 +1534,7 @@ DEFUN (show_ipv6_ospf6_database_type_id_self_originated,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
@@ -1590,7 +1611,7 @@ ALIAS (show_ipv6_ospf6_database_type_id_self_originated,
        show_ipv6_ospf6_database_type_id_self_originated_detail_cmd,
        "show ipv6 ospf6 database "
        "(router|network|inter-prefix|inter-router|as-external|"
-       "group-membership|type-7|link|intra-prefix) A.B.C.D self-originated "
+       "auto-config|group-membership|type-7|link|intra-prefix) A.B.C.D self-originated "
        "(detail|dump|internal)",
        SHOW_STR
        IPV6_STR
@@ -1601,6 +1622,7 @@ ALIAS (show_ipv6_ospf6_database_type_id_self_originated,
        "Display Inter-Area-Prefix LSAs\n"
        "Display Inter-Area-Router LSAs\n"
        "Display As-External LSAs\n"
+       "Display Auto-Config LSAs\n"
        "Display Group-Membership LSAs\n"
        "Display Type-7 LSAs\n"
        "Display Link LSAs\n"
