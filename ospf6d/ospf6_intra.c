@@ -733,14 +733,16 @@ ospf6_ac_lsa_originate (struct thread *thread)
   /* Aggregated (allocated) prefixes */
   for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nextnode, aggregated_prefix)) 
   {
-    ac_tlv_ag_p = (struct ospf6_ac_tlv_aggregated_prefix *) current_tlv;
     
-    ac_tlv_ag_p->header.type = OSPF6_AC_TLV_AGGREGATED_PREFIX;
-    ac_tlv_ag_p->header.length = OSPF6_AC_TLV_AGGREGATED_PREFIX_LENGTH;
+    if (aggregated_prefix->advertising_router_id == ospf6->router_id) {
+      ac_tlv_ag_p = (struct ospf6_ac_tlv_aggregated_prefix *) current_tlv;
+      ac_tlv_ag_p->header.type = OSPF6_AC_TLV_AGGREGATED_PREFIX;
+      ac_tlv_ag_p->header.length = OSPF6_AC_TLV_AGGREGATED_PREFIX_LENGTH;
 
-    /* XXX: Implement this */ 
+      /* XXX: Implement sending prefix */ 
 
-   current_tlv = ++ac_tlv_ag_p;
+      current_tlv = ++ac_tlv_ag_p;
+    }
   }
   
   /* Assigned prefixes */
