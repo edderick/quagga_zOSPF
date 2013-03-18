@@ -653,10 +653,10 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
     {
       struct ospf6_ac_tlv_aggregated_prefix *ac_tlv_ag_p 
 	= (struct ospf6_ac_tlv_aggregated_prefix *) current;
-      char *prefix_str; 
+      char prefix_str[64]; 
 
       snprintf(name, sizeof (name), "Aggregated Prefix");
-      in6_addr2str (ac_tlv_ag_p->prefix, ac_tlv_ag_p->prefix_length, &prefix_str[0], 64);
+      in6_addr2str (ac_tlv_ag_p->prefix, ac_tlv_ag_p->prefix_length, prefix_str, 64);
 
       vty_out (vty, "    Type: %s%s", name, VNL);
       vty_out (vty, "    Length: %d%s", ac_tlv_header->length, VNL);
