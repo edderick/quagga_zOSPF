@@ -127,7 +127,7 @@ ospf6_create (void)
   o->lsdb->hook_add = ospf6_top_lsdb_hook_add;
   o->lsdb->hook_remove = ospf6_top_lsdb_hook_remove;
 
-  o->allocated_prefix_list = list_new ();
+  o->aggregated_prefix_list = list_new ();
 
   o->route_table = OSPF6_ROUTE_TABLE_CREATE (GLOBAL, ROUTES);
   o->route_table->scope = o;

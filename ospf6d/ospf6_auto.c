@@ -308,50 +308,69 @@ ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header)
   return 1;
 }
 
-/* Add an aggregate prefix */
+/* Begin originating an updated ac_lsa */
+static void originate_new_ac_lsa (void) 
+{
+  struct listnode *node, *nextnode;
+  struct ospf6_area *area;
+  
+  /* Originate new AC_LSA */
+  for (ALL_LIST_ELEMENTS (ospf6->area_list, node, nextnode, area))
+  {
+    OSPF6_AC_LSA_SCHEDULE(area);  
+  }
+}
+
+/* Allocate a prefix */
 DEFUN (ipv6_allocate_prefix,
        ipv6_allocate_prefix_cmd,
        "ipv6 allocate-prefix X:X::X:X/M",
        OSPF6_STR)
 {
   struct prefix_ipv6 prefix;
-  struct ospf6_allocated_prefix *ap; 
+  struct ospf6_aggregated_prefix *ap; 
+
 
   str2prefix_ipv6 (argv[0], &prefix);
 
-  ap = malloc (sizeof (struct ospf6_allocated_prefix) );
+  ap = malloc (sizeof (struct ospf6_aggregated_prefix) );
 
   ap->prefix = prefix;
   ap->source = OSPF6_PREFIX_SOURCE_CONFIGURED; 
+  ap->advertising_router_id = ospf6->router_id;
 
-  listnode_add (ospf6->allocated_prefix_list, ap); 
+  listnode_add (ospf6->aggregated_prefix_list, ap); 
 
   zlog_warn (argv[0]);
+
+  originate_new_ac_lsa ();
 
   return CMD_SUCCESS;
 }
 
-/* Remove an aggregate prefix */
+/* Remove an allocated prefix */
 DEFUN (no_ipv6_allocate_prefix,
        no_ipv6_allocate_prefix_cmd,
        "no ipv6 allocate-prefix X:X::X:X/M",
        OSPF6_STR)
 {
   struct listnode *node, *nextnode;
-  struct ospf6_allocated_prefix *data;
+  struct ospf6_aggregated_prefix *aggregated_prefix;
   struct prefix_ipv6 prefix;
 
   str2prefix_ipv6 (argv[0], &prefix);
 
-  for (ALL_LIST_ELEMENTS (ospf6->allocated_prefix_list, node, nextnode, data)) 
+  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nextnode, aggregated_prefix)) 
   {
-    if (IPV6_ADDR_SAME (&data->prefix.prefix, &prefix.prefix))
+    if (IPV6_ADDR_SAME (&aggregated_prefix->prefix.prefix, &prefix.prefix))
     {
-      listnode_delete (ospf6->allocated_prefix_list, data);
+      listnode_delete (ospf6->aggregated_prefix_list, aggregated_prefix);
     }
   }
 
   zlog_warn (argv[0]);
+
+  originate_new_ac_lsa ();
 
   return CMD_SUCCESS;
 }
@@ -363,29 +382,32 @@ DEFUN (show_ipv6_allocated_prefix,
        OSPF6_STR)
 {
   struct listnode *node, *nextnode;
-  struct ospf6_allocated_prefix *data;
+  struct ospf6_aggregated_prefix *aggregated_prefix;
 
-  vty_out (vty, "Allocated Prefixes: %s", VTY_NEWLINE);
-  for (ALL_LIST_ELEMENTS (ospf6->allocated_prefix_list, node, nextnode, data)) 
+  vty_out (vty, "aggregated Prefixes: %s", VTY_NEWLINE);
+  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nextnode, aggregated_prefix)) 
   {
-    vty_out (vty, "Source : %d%s", data->source, VTY_NEWLINE); 
+    if (aggregated_prefix->source != OSPF6_PREFIX_SOURCE_OSPF)
+    {
+      vty_out (vty, "Source : %d%s", aggregated_prefix->source, VTY_NEWLINE); 
+    }
   }
 }
 
-/* List all known aggregated prefixes */
+/* List all known aggregated prefixes across all AS routers */
 DEFUN (show_ipv6_aggregated_prefix, 
        show_ipv6_aggregated_prefix_cmd, 
        "show ipv6 ospf6 prefixes aggregated",
        OSPF6_STR)
 {
   struct listnode *node, *nextnode;
-  struct ospf6_aggregated_prefix *data;
+  struct ospf6_aggregated_prefix *aggregated_prefix;
 
   vty_out (vty, "Aggregated Prefixes: %s", VTY_NEWLINE);
 
-  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nextnode, data)) 
+  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nextnode, aggregated_prefix)) 
   {
-    vty_out (vty, "Advertising router id: %d", data->advertising_router_id);
+    vty_out (vty, "Advertising router id: %d", aggregated_prefix->advertising_router_id);
     /* TODO: list out all aggregate prefixes known about */
     /* Include where they are originated from */
   }
@@ -398,7 +420,8 @@ DEFUN (show_ipv6_assigned_prefix,
        OSPF6_STR)
 {
   struct listnode *node, *nextnode;
-  struct ospf6_assigned_prefix *data;
+  struct ospf6_assigned_prefix *assigned_prefix;
+
   char *ifname;
   struct interface *ifp;
   struct ospf6_interface *interface;  
@@ -409,9 +432,9 @@ DEFUN (show_ipv6_assigned_prefix,
 
   vty_out (vty, "Assigned Prefixes for %s: %s", ifname, VTY_NEWLINE);
   
-  for (ALL_LIST_ELEMENTS (ospf6->allocated_prefix_list, node, nextnode, data)) 
+  for (ALL_LIST_ELEMENTS (interface->assigned_prefix_list, node, nextnode, assigned_prefix)) 
   {
-    vty_out (vty, "Originating router id: %d", data->assigning_router_id);
+    vty_out (vty, "Originating router id: %d", assigned_prefix->assigning_router_id);
     /* TODO: list out all assigned prefixes for interface */
     /* Include who assigned them */
   }

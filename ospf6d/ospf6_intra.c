@@ -689,7 +689,7 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
 }
 
 /* Originate an Auto-Configuration LSA */
-  int
+int
 ospf6_ac_lsa_originate (struct thread *thread)
 {
   struct ospf6_area *oa;
@@ -699,8 +699,13 @@ ospf6_ac_lsa_originate (struct thread *thread)
   struct ospf6_lsa *lsa;
 
   u_int32_t link_state_id = 0;
+  void *current_tlv;
   struct ospf6_ac_lsa *ac_lsa;
   struct ospf6_ac_tlv_router_hardware_fingerprint *ac_tlv_rhwfp;
+  struct ospf6_ac_tlv_aggregated_prefix *ac_tlv_ag_p;
+
+  struct listnode *node, *nextnode;
+  struct ospf6_aggregated_prefix *aggregated_prefix;
 
   oa = (struct ospf6_area *) THREAD_ARG (thread);
   oa->thread_ac_lsa = NULL;
@@ -712,16 +717,35 @@ ospf6_ac_lsa_originate (struct thread *thread)
   lsa_header = (struct ospf6_lsa_header *) buffer;
   ac_lsa = (struct ospf6_ac_lsa *)
     ((caddr_t) lsa_header + sizeof (struct ospf6_lsa_header));
+  
+  current_tlv = ac_lsa;
 
   /* Fill AC-LSA */
-  ac_tlv_rhwfp = (struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_lsa; 
+  /* Router-Hardware Fingerprint */
+  ac_tlv_rhwfp = (struct ospf6_ac_tlv_router_hardware_fingerprint *) current_tlv; 
   ac_tlv_rhwfp->header.type = OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT;
-  ac_tlv_rhwfp->header.length = OSPF6_AC_TLV_TYPE1_LENGTH;
+  ac_tlv_rhwfp->header.length = OSPF6_AC_TLV_RHWFP_LENGTH;
   ac_tlv_rhwfp->value = ospf6_router_hardware_fingerprint ();
 
   /* Step onto next tlv? */
-  ac_tlv_rhwfp++;
+  current_tlv = ++ac_tlv_rhwfp;
 
+  /* Aggregated (allocated) prefixes */
+  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nextnode, aggregated_prefix)) 
+  {
+    ac_tlv_ag_p = (struct ospf6_ac_tlv_aggregated_prefix *) current_tlv;
+    
+    ac_tlv_ag_p->header.type = OSPF6_AC_TLV_AGGREGATED_PREFIX;
+    ac_tlv_ag_p->header.length = OSPF6_AC_TLV_AGGREGATED_PREFIX_LENGTH;
+
+    /* XXX: Implement this */ 
+
+   current_tlv = ++ac_tlv_ag_p;
+  }
+  
+  /* Assigned prefixes */
+  /* XXX: Implement this */ 
+  
   /* Fill LSA Header */
   lsa_header->age = 0;
   lsa_header->type = htons (OSPF6_LSTYPE_AC);
@@ -730,7 +754,7 @@ ospf6_ac_lsa_originate (struct thread *thread)
   lsa_header->seqnum =
     ospf6_new_ls_seqnum (lsa_header->type, lsa_header->id,
 	lsa_header->adv_router, oa->lsdb);
-  lsa_header->length = htons ((caddr_t) ac_tlv_rhwfp - (caddr_t) buffer);
+  lsa_header->length = htons ((caddr_t) current_tlv - (caddr_t) buffer);
 
   /* LSA checksum */
   ospf6_lsa_checksum (lsa_header);
@@ -741,6 +765,7 @@ ospf6_ac_lsa_originate (struct thread *thread)
   /* Originate */
   ospf6_lsa_originate_area (lsa, oa);
 
+  zlog_warn ("Originating AC-LSA");
   return 0;
 }
 

@@ -153,7 +153,7 @@ struct ospf6_ac_tlv_header
 /* TODO: May need to pull TLVs into a separate file */
 
 #define OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT       1U
-#define OSPF6_AC_TLV_TYPE1_LENGTH 4U
+#define OSPF6_AC_TLV_RHWFP_LENGTH 4U
 struct ospf6_ac_tlv_router_hardware_fingerprint
 {
   struct ospf6_ac_tlv_header header;
@@ -162,7 +162,7 @@ struct ospf6_ac_tlv_router_hardware_fingerprint
 
 /* TBD-BY-ISNA-1 */
 #define OSPF6_AC_TLV_AGGREGATED_PREFIX	2U
-#define OSPF6_AC_TLV_TYPE2_LENGTH 4U
+#define OSPF6_AC_TLV_AGGREGATED_PREFIX_LENGTH 4U
 struct ospf6_ac_tlv_aggregated_prefix
 {
   struct ospf6_ac_tlv_header header;
@@ -173,7 +173,7 @@ struct ospf6_ac_tlv_aggregated_prefix
 
 /* TBD-BY-IANA-2 */
 #define OSPF6_AC_TLV_ASSIGNED_PREFIX 3U
-#define OSPF6_AC_TLV_TYPE3_LENGTH 4U
+#define OSPF6_AC_TLV_ASSIGNED_PREFIX_LENGTH 4U
 struct ospf6_ac_tlv_assigned_prefix
 {
   struct ospf6_ac_tlv_header header;
