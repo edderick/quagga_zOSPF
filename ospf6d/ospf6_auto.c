@@ -330,10 +330,9 @@ DEFUN (ipv6_allocate_prefix,
   struct prefix_ipv6 prefix;
   struct ospf6_aggregated_prefix *ap; 
 
-
   str2prefix_ipv6 (argv[0], &prefix);
 
-  ap = malloc (sizeof (struct ospf6_aggregated_prefix) );
+  ap = malloc (sizeof (struct ospf6_aggregated_prefix));
 
   ap->prefix = prefix;
   ap->source = OSPF6_PREFIX_SOURCE_CONFIGURED; 
