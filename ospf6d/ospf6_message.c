@@ -1355,14 +1355,16 @@ ospf6_lsupdate_recv (struct in6_addr *src, struct in6_addr *dst,
        p + OSPF6_LSA_SIZE (p) <= OSPF6_MESSAGE_END (oh);
        p += OSPF6_LSA_SIZE (p))
     {
-			struct ospf6_lsa_header *lsa_header = (struct ospf6_lsa_header *) p;
-			
-			if (lsa_header->adv_router == ospf6->router_id)
-			{
-				zlog_warn ("Check for RID conflict");
-				if (ospf6_check_hw_fingerprint (lsa_header))
-					return;
-			}
+      struct ospf6_lsa_header *lsa_header = (struct ospf6_lsa_header *) p;
+      
+      if (lsa_header->adv_router == ospf6->router_id)
+	{
+	  zlog_warn ("Check for RID conflict");
+	  if (ospf6_check_hw_fingerprint (lsa_header))
+	  {
+	    return;
+	  }
+	}
 
       ospf6_receive_lsa (on, (struct ospf6_lsa_header *) p);
     }
