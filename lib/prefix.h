@@ -192,6 +192,7 @@ extern void masklen2ip6 (const int, struct in6_addr *);
 extern void str2in6_addr (const char *, struct in6_addr *);
 extern const char *inet6_ntoa (struct in6_addr);
 
+extern void in6_addr2str (struct in6_addr prefix, u_int8_t prefix_len, char *str, int size);
 #endif /* HAVE_IPV6 */
 
 extern int all_digit (const char *);

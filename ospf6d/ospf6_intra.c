@@ -617,19 +617,6 @@ ospf6_link_lsa_originate (struct thread *thread)
  * 5.2.1 Auto-Configuration-LSA        */
 /***************************************/
 
-static void
-build_prefix_string (struct in6_addr addr, u_int8_t prefix_len, char * strbuf)
-{
-  struct prefix prefix;
-
-  prefix.family = AF_INET6;
-  prefix.prefixlen = prefix_len;
-  prefix.u.prefix6 = addr;
-
-  /* XXX: Magic Number */
-  prefix2str (&prefix, strbuf, 64);
-}
-
 static int
 ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
 {
@@ -666,10 +653,10 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
     {
       struct ospf6_ac_tlv_aggregated_prefix *ac_tlv_ag_p 
 	= (struct ospf6_ac_tlv_aggregated_prefix *) current;
-      char prefix_str[64]; 
+      char *prefix_str; 
 
       snprintf(name, sizeof (name), "Aggregated Prefix");
-      build_prefix_string (ac_tlv_ag_p->prefix, ac_tlv_ag_p->prefix_length, prefix_str);
+      in6_addr2str (ac_tlv_ag_p->prefix, ac_tlv_ag_p->prefix_length, &prefix_str[0], 64);
 
       vty_out (vty, "    Type: %s%s", name, VNL);
       vty_out (vty, "    Length: %d%s", ac_tlv_header->length, VNL);
@@ -683,7 +670,7 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
       struct ospf6_ac_tlv_assigned_prefix *ac_tlv_as_p
 	= (struct ospf6_ac_tlv_assigned_prefix *) current;
   
-      snprintf(name, sizeof (name), "Assigned Prefix");
+      snprintf (name, sizeof (name), "Assigned Prefix");
 
       vty_out (vty, "    Type: %s%s", name, VNL);
       vty_out (vty, "    Length: %d%s", ac_tlv_header->length, VNL);

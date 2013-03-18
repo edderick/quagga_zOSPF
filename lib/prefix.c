@@ -627,6 +627,15 @@ str2in6_addr (const char *str, struct in6_addr *addr)
       addr->s6_addr[i] = x & 0xff;
     }
 }
+
+void 
+in6_addr2str (struct in6_addr prefix, u_int8_t prefix_len, char *str, int size)
+{
+  char buf[BUFSIZ];
+
+  inet_ntop (AF_INET6, &prefix, buf, BUFSIZ);
+  snprintf (str, size, "%s/%d", buf, prefix_len);
+}
 #endif /* HAVE_IPV6 */
 
 void
