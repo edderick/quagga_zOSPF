@@ -12,6 +12,7 @@
 #include "ospf6_interface.h"
 #include "ospf6_message.h"
 #include "ospf6_area.h"
+#include "ospf6_neighbor.h"
 
 #include "ospf6_intra.h"
 #include "ospf6_lsdb.h"
@@ -506,31 +507,182 @@ mark_area_prefixes_invalid (struct ospf6_area *oa)
   }
 }
 
-static struct ospf6_lsdb *
-create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb)
+static void
+create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb, struct list *assigned_prefix_list, struct list *aggregated_prefix_list)
 {
   /* Copy all AC LSAs in this lsdb to a new lsdb */
   /* XXX: Why does this call route_rable_init? Is it an issue?*/
-  struct osfp6_lsa *current_lsa;
-  struct ospf6_lsdb *new_lsdb = ospf6_lsdb_create (NULL);
+  struct ospf6_lsa *current_lsa;
   
   current_lsa = ospf6_lsdb_type_head (htons (OSPF6_LSTYPE_AC), lsdb);
 
   while (current_lsa != NULL) 
   {
-    ospf6_lsdb_add (current_lsa, lsdb);
+    struct ospf6_ac_lsa * ac_lsa;
+    char *start, *end, *current;
+    /* Process LSA */
+     
+    ac_lsa = (struct ospf6_ac_lsa *)
+        ((char *) current_lsa->header + sizeof (struct ospf6_lsa_header));
+
+    /* Start and end of all TLVs */
+    start = (char *) ac_lsa + sizeof (struct ospf6_ac_lsa);
+    end = (char *) current_lsa->header + ntohs (current_lsa->header->length);
+    current = start;
+
+    while (current < end)
+    {
+        struct ospf6_ac_tlv_header *ac_tlv_header = (struct ospf6_ac_tlv_header *) current;
+
+	if (ac_tlv_header->type == OSPF6_AC_TLV_AGGREGATED_PREFIX)
+	{
+	    struct ospf6_ac_tlv_aggregated_prefix *ac_tlv_ag_p 
+	          = (struct ospf6_ac_tlv_aggregated_prefix *) current;
+	    struct ospf6_aggregated_prefix *ag_prefix;
+
+	    ag_prefix = malloc (sizeof (struct ospf6_aggregated_prefix));
+	    
+	    ag_prefix->prefix.family = AF_INET6;
+	    ag_prefix->prefix.prefixlen = ac_tlv_ag_p->prefix_length;
+	    ag_prefix->prefix.prefix = ac_tlv_ag_p->prefix;
+
+	    ag_prefix->source = OSPF6_PREFIX_SOURCE_OSPF;
+	    ag_prefix->advertising_router_id = current_lsa->header->adv_router;
+
+	    listnode_add (aggregated_prefix_list, ag_prefix);
+  
+	    zlog_warn ("    Added agg");
+
+	    current += sizeof (struct ospf6_ac_tlv_aggregated_prefix);
+	} 
+	else if (ac_tlv_header->type == OSPF6_AC_TLV_ASSIGNED_PREFIX)
+	{
+	    struct ospf6_ac_tlv_assigned_prefix *ac_tlv_as_p 
+	          = (struct ospf6_ac_tlv_assigned_prefix *) current;
+	    struct ospf6_assigned_prefix *as_prefix;
+
+	    as_prefix = malloc (sizeof (struct ospf6_assigned_prefix));
+
+	    as_prefix->prefix.family = AF_INET6;
+	    as_prefix->prefix.prefixlen = ac_tlv_as_p->prefix_length;
+	    as_prefix->prefix.prefix = ac_tlv_as_p->prefix;
+
+	    as_prefix->assigning_router_id = current_lsa->header->adv_router;
+	    as_prefix->assigning_router_if_id = ac_tlv_as_p->interface_id;
+
+	    current += sizeof (struct ospf6_ac_tlv_assigned_prefix);
+	} else {
+	  /* TLV doesn't concern us, skip it */
+	  current += sizeof (struct ospf6_ac_tlv_header) + ac_tlv_header->length;
+	}
+
+    }    
+
     current_lsa = ospf6_lsdb_type_next (htons (OSPF6_LSTYPE_AC), current_lsa);
     zlog_warn ("  Added an AC LSA to snapshot");
   }
+}
 
-  return new_lsdb;
+static struct list *
+generate_active_neighbor_list (struct list * neighbor_list)
+{
+  struct list *active_neigbor_list;
+  struct listnode *node, *nextnode; 
+  struct ospf6_neighbor *neighbor;
+
+  active_neigbor_list = list_new ();
+
+  for (ALL_LIST_ELEMENTS (neighbor_list, node, nextnode, neighbor))
+  {
+    if (neighbor->state > OSPF6_NEIGHBOR_INIT)
+    {
+      listnode_add (neighbor, active_neigbor_list);
+    }
+  }
+}
+
+static void 
+check_prefix_interface_pair (struct ospf6_aggregated_prefix *agp, struct ospf6_interface *ifp, struct list *aspl)
+{
+  /* Generate neighbour list */  
+  struct list *active_neigbor_list = generate_active_neighbor_list (ifp->neighbor_list);
+    
+  /* Determine if an assignment must be made */
+    /* Highest Router ID? */
+    /* Is there already an assignment? */
+    /* Is Router ID higher than current assigner? */
+
+  /* Decide the what to do: */
+    /* This router has made an assignment. Noone with a higher RID has also made one */
+    /* Someone else has made an assignment. This router hasn't made one or has a lower RID */
+    /* No assigment. Highest RID */
+    /* No assignment. Not highest RID */
+}
+
+/* XXX: Move to prefix? */
+static u_int8_t 
+contains (struct prefix *container, struct prefix *containee)
+{
+  int i;
+  if (container->prefixlen >= containee->prefixlen)
+    return 0;
+  
+  if(container->family != containee->family)
+    return 0;
+
+  for (i = 0; i < container->prefixlen; i++) 
+  {
+    if (prefix_bit (&container->u, i) 
+     != prefix_bit (&containee->u, i))
+    {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+static u_int8_t
+exists_containing_prefix (struct ospf6_aggregated_prefix *aggregated_prefix, struct list *aggregated_prefix_list)
+{
+  struct listnode *node, *nextnode;
+  struct ospf6_aggregated_prefix *current_prefix; 
+  
+  for (ALL_LIST_ELEMENTS (aggregated_prefix_list, node, nextnode, current_prefix))
+  {
+    if (contains (current_prefix, aggregated_prefix)) 
+	return 1;
+  }
+
+  return 0;
+}
+
+static void 
+loop_through_prefix_interface_pairs (struct ospf6_area *oa, struct list *aggregated_prefix_list, struct list *assigned_prefix_list)
+{
+  struct listnode *node, *nextnode;
+  struct ospf6_aggregated_prefix *ag_prefix;
+
+  for (ALL_LIST_ELEMENTS (aggregated_prefix_list, node, nextnode, ag_prefix)) 
+  {
+    struct listnode *inner_node, *inner_nextnode;
+    struct ospf6_interface *ifp;
+    /* Do stuff for ifp and ag_prefix */   
+    if (!exists_containing_prefix(ag_prefix, aggregated_prefix_list))
+    {	
+      for (ALL_LIST_ELEMENTS (oa->if_list, inner_node, inner_nextnode, ifp)) 
+      {
+	check_prefix_interface_pair(ag_prefix, ifp, assigned_prefix_list);
+      }
+    }
+  }
 }
 
 void 
 ospf6_assign_prefixes (void)
 {
   struct ospf6_area *backbone_area;
-  struct ospf6_lsdb *lsdb_snapshot;
+  struct list *assigned_prefix_list, *aggregated_prefix_list;
   zlog_warn ("Running assignment algorithm");
  
   /* OSPFv3 Autoconf only runs on the backbone */
@@ -540,30 +692,18 @@ ospf6_assign_prefixes (void)
   mark_area_prefixes_invalid (backbone_area);
 
   /* Create Snapshot of LSBD */
-  lsdb_snapshot = create_ac_lsdb_snapshot (backbone_area->lsdb);
+  assigned_prefix_list = list_new ();
+  aggregated_prefix_list = list_new ();
+  create_ac_lsdb_snapshot (backbone_area->lsdb, assigned_prefix_list, aggregated_prefix_list);
 
   /* For each Aggregated Prefix - Interface Pair */
+  loop_through_prefix_interface_pairs (backbone_area, aggregated_prefix_list, assigned_prefix_list);
     
-    /* If there exists a containing prefix: Skip */
-
-    /* Generate Active Neighbour List */
-    
-    /* Determine if an assignment must be made */
-      /* Highest Router ID? */
-      /* Is there already an assignment? */
-      /* Is Router ID higher than current assigner? */
-
-    /* Decide the what to do: */
-      /* This router has made an assignment. Noone with a higher RID has also made one */
-      /* Someone else has made an assignment. This router hasn't made one or has a lower RID */
-      /* No assigment. Highest RID */
-      /* No assignment. Not highest RID */
-
   /* Delete ALL invalid assignments */
 
   /* Tidy up */
-    /* Delete snapshot!!! */
-    ospf6_lsdb_delete (lsdb_snapshot);
+  list_delete (assigned_prefix_list);
+  list_delete (aggregated_prefix_list);
 }
 
 
