@@ -705,9 +705,11 @@ ospf6_ac_lsa_originate (struct thread *thread)
   struct ospf6_ac_lsa *ac_lsa;
   struct ospf6_ac_tlv_router_hardware_fingerprint *ac_tlv_rhwfp;
   struct ospf6_ac_tlv_aggregated_prefix *ac_tlv_ag_p;
+  struct ospf6_ac_tlv_assigned_prefix *ac_tlv_as_p;
 
   struct listnode *node, *nextnode;
   struct ospf6_aggregated_prefix *aggregated_prefix;
+  struct ospf6_interface *ifp;
 
   oa = (struct ospf6_area *) THREAD_ARG (thread);
   oa->thread_ac_lsa = NULL;
@@ -747,10 +749,29 @@ ospf6_ac_lsa_originate (struct thread *thread)
       current_tlv = ++ac_tlv_ag_p;
     }
   }
-  
+ 
   /* Assigned prefixes */
-  /* XXX: Implement this */ 
-  
+  for (ALL_LIST_ELEMENTS (oa->if_list, node, nextnode, ifp)) 
+  {
+    struct listnode *inner_node, *inner_nextnode;
+    struct ospf6_assigned_prefix *assigned_prefix;
+    for (ALL_LIST_ELEMENTS (ifp->assigned_prefix_list, inner_node, inner_nextnode, assigned_prefix)) 
+    {
+      if (assigned_prefix->assigning_router_id == ospf6->router_id) {
+	ac_tlv_as_p = (struct ospf6_ac_tlv_assigned_prefix *) current_tlv;
+	ac_tlv_as_p->header.type = OSPF6_AC_TLV_ASSIGNED_PREFIX;
+	ac_tlv_as_p->header.length = OSPF6_AC_TLV_ASSIGNED_PREFIX_LENGTH;
+
+	/* Send prefix */ 
+	ac_tlv_as_p->prefix_length = assigned_prefix->prefix.prefixlen;
+	ac_tlv_as_p->prefix = assigned_prefix->prefix.prefix;
+	ac_tlv_as_p->interface_id = ifp->interface->ifindex;
+
+	current_tlv = ++ac_tlv_as_p;
+      }
+    }
+  }
+
   /* Fill LSA Header */
   lsa_header->age = 0;
   lsa_header->type = htons (OSPF6_LSTYPE_AC);
