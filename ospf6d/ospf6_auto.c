@@ -470,6 +470,13 @@ DEFUN (show_ipv6_assigned_prefix,
 }
 
 
+void 
+ospf6_assign_prefixes (void)
+{
+  zlog_warn ("Time to run assignment algorithm");
+}
+
+
 /* Install autoconf related commands. */
 void 
 ospf6_auto_init (void) 

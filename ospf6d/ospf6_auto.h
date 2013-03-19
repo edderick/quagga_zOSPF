@@ -32,8 +32,10 @@ void ospf6_init_seed ();
 
 void ospf6_set_router_id (u_int32_t rid);
 
-void ospf6_check_router_id(struct ospf6_header *oh, struct in6_addr src, struct in6_addr dst);
+void ospf6_check_router_id (struct ospf6_header *oh, struct in6_addr src, struct in6_addr dst);
 int ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header); 
+
+void ospf6_assign_prefixes (void); 
 
 #define R_HW_FP_BYTELEN 4
 #define R_HW_FP_CMP(D,S)   memcmp ((D), (S), R_HW_FP_BYTELEN)
