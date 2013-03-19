@@ -14,6 +14,7 @@
 #include "ospf6_area.h"
 
 #include "ospf6_intra.h"
+#include "ospf6_lsdb.h"
 #include "ospf6_lsa.h"
 #include "ospf6d.h"
 
@@ -469,11 +470,100 @@ DEFUN (show_ipv6_assigned_prefix,
   }
 }
 
+static void
+mark_prefix_invalid (struct ospf6_assigned_prefix *ap)
+{
+  ap->is_valid = 0;
+}
+
+static void 
+mark_prefix_valid (struct ospf6_assigned_prefix *ap)
+{
+  ap->is_valid = 1;
+}
+
+static void 
+mark_interface_prefixes_invalid (struct ospf6_interface *oi)
+{
+  struct listnode *node, *nextnode;
+  struct ospf6_assigned_prefix *ap;
+
+  for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nextnode, ap))
+  {
+       mark_prefix_invalid (ap);
+  }
+}
+
+static void 
+mark_area_prefixes_invalid (struct ospf6_area *oa)
+{
+  struct listnode *node, *nextnode;
+  struct ospf6_interface *ifp;
+
+  for (ALL_LIST_ELEMENTS (oa->if_list, node, nextnode, ifp)) 
+  {
+    mark_interface_prefixes_invalid (ifp);
+  }
+}
+
+static struct ospf6_lsdb *
+create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb)
+{
+  /* Copy all AC LSAs in this lsdb to a new lsdb */
+  /* XXX: Why does this call route_rable_init? Is it an issue?*/
+  struct osfp6_lsa *current_lsa;
+  struct ospf6_lsdb *new_lsdb = ospf6_lsdb_create (NULL);
+  
+  current_lsa = ospf6_lsdb_type_head (htons (OSPF6_LSTYPE_AC), lsdb);
+
+  while (current_lsa != NULL) 
+  {
+    ospf6_lsdb_add (current_lsa, lsdb);
+    current_lsa = ospf6_lsdb_type_next (htons (OSPF6_LSTYPE_AC), current_lsa);
+    zlog_warn ("  Added an AC LSA to snapshot");
+  }
+
+  return new_lsdb;
+}
 
 void 
 ospf6_assign_prefixes (void)
 {
-  zlog_warn ("Time to run assignment algorithm");
+  struct ospf6_area *backbone_area;
+  struct ospf6_lsdb *lsdb_snapshot;
+  zlog_warn ("Running assignment algorithm");
+ 
+  /* OSPFv3 Autoconf only runs on the backbone */
+  backbone_area = ospf6_area_lookup (0, ospf6);
+
+  /* Mark all assignments and invalid */
+  mark_area_prefixes_invalid (backbone_area);
+
+  /* Create Snapshot of LSBD */
+  lsdb_snapshot = create_ac_lsdb_snapshot (backbone_area->lsdb);
+
+  /* For each Aggregated Prefix - Interface Pair */
+    
+    /* If there exists a containing prefix: Skip */
+
+    /* Generate Active Neighbour List */
+    
+    /* Determine if an assignment must be made */
+      /* Highest Router ID? */
+      /* Is there already an assignment? */
+      /* Is Router ID higher than current assigner? */
+
+    /* Decide the what to do: */
+      /* This router has made an assignment. Noone with a higher RID has also made one */
+      /* Someone else has made an assignment. This router hasn't made one or has a lower RID */
+      /* No assigment. Highest RID */
+      /* No assignment. Not highest RID */
+
+  /* Delete ALL invalid assignments */
+
+  /* Tidy up */
+    /* Delete snapshot!!! */
+    ospf6_lsdb_delete (lsdb_snapshot);
 }
 
 

@@ -24,6 +24,7 @@ struct ospf6_assigned_prefix
 {
   struct prefix_ipv6 prefix;
   u_int32_t assigning_router_id;
+  u_int8_t is_valid;
 };
 
 u_int32_t ospf6_generate_router_id ();
