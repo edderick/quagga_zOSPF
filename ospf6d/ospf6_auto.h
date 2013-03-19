@@ -11,8 +11,13 @@ struct ospf6_aggregated_prefix
 
 #define OSPF6_PREFIX_SOURCE_DHCP6_PD 0
 #define OSPF6_PREFIX_SOURCE_CONFIGURED 1
-#define OSPF6_PREFIX_SORUCE_GENERATED 2
+#define OSPF6_PREFIX_SOURCE_GENERATED 2
 #define OSPF6_PREFIX_SOURCE_OSPF 3
+
+#define OSPF6_PREFIX_SOURCE_DHCP6_PD_STRING "DHCPv6 Prefix Delegation"
+#define OSPF6_PREFIX_SOURCE_CONFIGURED_STRING "Manually Configured"
+#define OSPF6_PREFIX_SOURCE_GENERATED_STRING "Automatically Generated"
+#define OSPF6_PREFIX_SOURCE_OSPF_STRING "Received From Neighbouring Router"
 
 /* Prefix that has been assigned to a link by some router */
 struct ospf6_assigned_prefix 
