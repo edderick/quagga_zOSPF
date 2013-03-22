@@ -471,6 +471,30 @@ DEFUN (show_ipv6_assigned_prefix,
   }
 }
 
+/* XXX: Move to prefix? */
+static u_int8_t 
+contains (struct prefix *container, struct prefix *containee)
+{
+  int i;
+  if (container->prefixlen >= containee->prefixlen)
+    return 0;
+  
+  if(container->family != containee->family)
+    return 0;
+
+  for (i = 0; i < container->prefixlen; i++) 
+  {
+    if (prefix_bit (&container->u, i) 
+     != prefix_bit (&containee->u, i))
+    {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+
 static void
 mark_prefix_invalid (struct ospf6_assigned_prefix *ap)
 {
@@ -505,6 +529,23 @@ mark_area_prefixes_invalid (struct ospf6_area *oa)
   {
     mark_interface_prefixes_invalid (ifp);
   }
+}
+
+static int
+lookup_source (struct ospf6_aggregated_prefix *ag_prefix)
+{
+  struct listnode *node, *nextnode;
+  struct ospf6_aggregated_prefix *current_ag_prefix;
+
+  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nextnode, current_ag_prefix))
+  {
+    if (prefix_same(&current_ag_prefix->prefix, &ag_prefix->prefix))
+    {
+      return current_ag_prefix->source;
+    }
+  }
+
+  return OSPF6_PREFIX_SOURCE_OSPF;
 }
 
 static void
@@ -546,7 +587,15 @@ create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb, struct list *assigned_prefix_l
 	    ag_prefix->prefix.prefixlen = ac_tlv_ag_p->prefix_length;
 	    ag_prefix->prefix.prefix = ac_tlv_ag_p->prefix;
 
-	    ag_prefix->source = OSPF6_PREFIX_SOURCE_OSPF;
+	    if (current_lsa->header->adv_router != ospf6->router_id) 
+	    {
+	      ag_prefix->source = OSPF6_PREFIX_SOURCE_OSPF;
+	    }
+	    else
+	    {
+	      ag_prefix->source = lookup_source (ag_prefix);
+	    }
+
 	    ag_prefix->advertising_router_id = current_lsa->header->adv_router;
 
 	    listnode_add (aggregated_prefix_list, ag_prefix);
@@ -591,49 +640,26 @@ generate_active_neighbor_list (struct list * neighbor_list)
   struct ospf6_neighbor *neighbor;
 
   active_neigbor_list = list_new ();
-
+    
   for (ALL_LIST_ELEMENTS (neighbor_list, node, nextnode, neighbor))
   {
     if (neighbor->state > OSPF6_NEIGHBOR_INIT)
     {
-      listnode_add (neighbor, active_neigbor_list);
+      listnode_add (active_neigbor_list, neighbor);
     }
   }
+  return active_neigbor_list;
 }
 
-static void 
-check_prefix_interface_pair (struct ospf6_aggregated_prefix *agp, struct ospf6_interface *ifp, struct list *aspl)
-{
-  /* Generate neighbour list */  
-  struct list *active_neigbor_list = generate_active_neighbor_list (ifp->neighbor_list);
-    
-  /* Determine if an assignment must be made */
-    /* Highest Router ID? */
-    /* Is there already an assignment? */
-    /* Is Router ID higher than current assigner? */
-
-  /* Decide the what to do: */
-    /* This router has made an assignment. Noone with a higher RID has also made one */
-    /* Someone else has made an assignment. This router hasn't made one or has a lower RID */
-    /* No assigment. Highest RID */
-    /* No assignment. Not highest RID */
-}
-
-/* XXX: Move to prefix? */
 static u_int8_t 
-contains (struct prefix *container, struct prefix *containee)
+is_highest_rid (u_int32_t router_id, struct list *neighbor_list) 
 {
-  int i;
-  if (container->prefixlen >= containee->prefixlen)
-    return 0;
-  
-  if(container->family != containee->family)
-    return 0;
+  struct listnode *node, *nextnode;
+  struct ospf6_neighbor *neighbor;
 
-  for (i = 0; i < container->prefixlen; i++) 
+  for (ALL_LIST_ELEMENTS (neighbor_list, node, nextnode, neighbor))
   {
-    if (prefix_bit (&container->u, i) 
-     != prefix_bit (&containee->u, i))
+    if (neighbor->router_id > router_id)
     {
       return 0;
     }
@@ -641,6 +667,151 @@ contains (struct prefix *container, struct prefix *containee)
 
   return 1;
 }
+
+static struct ospf6_assigned_prefix *
+find_assignment (struct ospf6_neighbor *neighbor, struct list *assigned_prefix_list)
+{
+  struct listnode *node, *nextnode;
+  struct ospf6_assigned_prefix *ap;
+
+  for (ALL_LIST_ELEMENTS (assigned_prefix_list, node, nextnode, ap))
+  {
+    if((ap->assigning_router_id == neighbor->router_id) 
+	&& (ap->assigning_router_if_id == neighbor->ifindex))
+    {
+      return ap;
+    }
+  }
+  return NULL;
+}
+
+static struct ospf6_assigned_prefix *
+find_highest_assignment (struct ospf6_aggregated_prefix *ag_prefix, struct list *neighbor_list, struct list *assigned_prefix_list)
+{
+  struct listnode *node, *nextnode;
+  struct ospf6_neighbor *neighbor;
+
+  struct ospf6_assigned_prefix *highest_ap = NULL;
+
+  for (ALL_LIST_ELEMENTS (neighbor_list, node, nextnode, neighbor))
+  {
+    struct ospf6_assigned_prefix *current_ap = find_assignment(neighbor, assigned_prefix_list);
+    if (current_ap != NULL)
+    {
+      if (contains (&ag_prefix->prefix, &current_ap->prefix)) 
+      {
+	if ( (highest_ap == NULL)
+	    || (current_ap->assigning_router_id > highest_ap->assigning_router_id))
+	{ 
+	  highest_ap = current_ap;
+	}
+      }
+    }
+  }
+
+  return highest_ap;
+}
+
+static u_int8_t
+is_prefix_valid_network_wide (struct ospf6_assigned_prefix *current_assigned_prefix, struct list *aspl)
+{
+  //Check all assigned prefixes in aspl for an assignment of the same prefix, with higher router id
+  struct listnode *node, *nextnode;
+  struct ospf6_assigned_prefix *prefix;
+
+  for (ALL_LIST_ELEMENTS (aspl, node, nextnode, prefix))
+  {
+    if (prefix_same (&prefix->prefix, &current_assigned_prefix->prefix))
+    {
+      if (prefix->assigning_router_id > current_assigned_prefix->assigning_router_id)
+      {
+	return 0;
+      }
+    }
+  }
+
+  return 1;
+}
+
+static u_int8_t 
+is_prefix_valid_locally (struct prefix *current_assigned_prefix, struct ospf6_area oa)
+{
+
+}
+
+static void 
+check_prefix_interface_pair (struct ospf6_aggregated_prefix *agp, struct ospf6_interface *ifp, struct list *aspl)
+{
+  u_int8_t has_highest_rid, has_highest_assignment;
+  struct ospf6_assigned_prefix *highest_assigned_prefix;
+
+  /* Generate neighbor list */  
+  struct list *active_neigbor_list = generate_active_neighbor_list (ifp->neighbor_list);
+
+  /* Determine if an assignment must be made */
+  /* Highest Router ID? */
+  has_highest_rid = is_highest_rid (ospf6->router_id, active_neigbor_list);
+
+  /* Is there already an assignment? */
+  highest_assigned_prefix = find_highest_assignment (agp, active_neigbor_list, aspl);
+
+  /* Is Router ID higher than current assigner? */
+  if (highest_assigned_prefix != NULL)
+  {
+    has_highest_assignment = (highest_assigned_prefix->assigning_router_id == ospf6->router_id); 
+  }
+  else 
+  {
+    has_highest_assignment = 0;
+  }
+
+  /* Decide the what to do: */
+  /* This router has made an assignment. Noone with a higher RID has also made one */
+  if (has_highest_assignment)
+  {
+    zlog_warn ("Assignment, me!");
+    /* Ensure network validity */
+    if (is_prefix_valid_network_wide (highest_assigned_prefix, aspl)){
+      /* Keep using prefix */
+      //Mark as valid, and move on with your life.
+    }
+    else 
+    {
+      /* Stop using prefix */
+      //Depricate prefix
+      //Make new assignment????
+    }
+  }
+  /* Someone else has made an assignment. This router hasn't made one or has a lower RID */
+  else if (highest_assigned_prefix != NULL)
+  {
+    zlog_warn("Assignment, Someone else");
+    /* Ensure local validity */
+    //If it already exists, mark it as valid.
+    //If it's not, make sure there isn't a colliding assigment 
+    //--> if it does colide. Silently ignore it.
+    /* Install that prefix */
+  }
+  /* No assigment. Highest RID */
+  else if (has_highest_rid) 
+  {
+    zlog_warn ("No Assignment. Highest RID");
+    /* Make assignment from this aggregated prefix */
+    //Determine which prefixes are already in use
+    //Check non volatile storage
+    //Use an unassigned prefix 
+    //Hysteria?
+    //If can't make an assignment - Raise a warning?
+    //Mark as valid and originate
+  }
+  /* No assignment. Not highest RID */
+  else 
+  {
+    zlog_warn ("No Assignment. Not Highest RID");
+    /* Do nothing - else not really needed :p */
+  }
+}
+
 
 static u_int8_t
 exists_containing_prefix (struct ospf6_aggregated_prefix *aggregated_prefix, struct list *aggregated_prefix_list)
@@ -651,7 +822,9 @@ exists_containing_prefix (struct ospf6_aggregated_prefix *aggregated_prefix, str
   for (ALL_LIST_ELEMENTS (aggregated_prefix_list, node, nextnode, current_prefix))
   {
     if (contains (current_prefix, aggregated_prefix)) 
+    {
 	return 1;
+    }
   }
 
   return 0;
@@ -701,9 +874,13 @@ ospf6_assign_prefixes (void)
     
   /* Delete ALL invalid assignments */
 
+  /* Use aggregated prefix list */
+  list_delete (ospf6->aggregated_prefix_list);
+  ospf6->aggregated_prefix_list = aggregated_prefix_list;
+
   /* Tidy up */
   list_delete (assigned_prefix_list);
-  list_delete (aggregated_prefix_list);
+  /*list_delete (aggregated_prefix_list);*/
 }
 
 
