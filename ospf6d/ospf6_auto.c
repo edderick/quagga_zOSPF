@@ -476,7 +476,7 @@ static u_int8_t
 contains (struct prefix *container, struct prefix *containee)
 {
   int i;
-  if (container->prefixlen >= containee->prefixlen)
+  if (container->prefixlen > containee->prefixlen)
     return 0;
   
   if(container->family != containee->family)
@@ -776,7 +776,7 @@ create_in_use_list (struct ospf6_aggregated_prefix *agp, struct list *aspl)
     if (contains (&agp->prefix, &ap->prefix))
     {
       //TODO: Do we need to create a copy?
-      listnode_add (in_use_list, &ap->prefix);
+      listnode_add (in_use_list, ap);
     }
   }
   return in_use_list;
@@ -847,7 +847,9 @@ pick_prefix (struct ospf6_aggregated_prefix *agp, struct list *in_use_prefixes)
       return new_prefix; 
     }
   }
- 
+
+  zlog_warn("cannaye Do it");
+
   /* Address space exhaustion!! */
   prefix_free (new_prefix);
   return NULL;
@@ -971,7 +973,15 @@ check_prefix_interface_pair (struct ospf6_aggregated_prefix *agp, struct ospf6_i
       /* Stop using prefix */
       zlog_warn ("Someone better has that you muppet");
       //Deprecate prefix
-      mark_prefix_invalid (prefix);
+      struct listnode *node, *nextnode;
+      struct ospf6_assigned_prefix *prefix;
+
+      for (ALL_LIST_ELEMENTS (ifp->assigned_prefix_list, node, nextnode, prefix))
+      {
+	if (prefix_same (&prefix->prefix, &highest_assigned_prefix->prefix)) {
+	  mark_prefix_invalid (prefix);
+	}
+      }
       
       //TODO: Send out RA
 
@@ -1031,7 +1041,7 @@ exists_containing_prefix (struct ospf6_aggregated_prefix *aggregated_prefix, str
   
   for (ALL_LIST_ELEMENTS (aggregated_prefix_list, node, nextnode, current_prefix))
   {
-    if (contains (current_prefix, aggregated_prefix)) 
+    if (contains (current_prefix, aggregated_prefix) && (current_prefix != aggregated_prefix)) 
     {
 	return 1;
     }
