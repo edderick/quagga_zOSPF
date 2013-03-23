@@ -669,12 +669,15 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
     {
       struct ospf6_ac_tlv_assigned_prefix *ac_tlv_as_p
 	= (struct ospf6_ac_tlv_assigned_prefix *) current;
-  
+      char prefix_str[64]; 
+      
       snprintf (name, sizeof (name), "Assigned Prefix");
-
+      in6_addr2str (ac_tlv_as_p->prefix, ac_tlv_as_p->prefix_length, prefix_str, 64);
+      
       vty_out (vty, "    Type: %s%s", name, VNL);
       vty_out (vty, "    Length: %d%s", ac_tlv_header->length, VNL);
-
+      vty_out (vty, "	 Prefix: %s%s", prefix_str, VNL);
+      
       current += sizeof (struct ospf6_ac_tlv_assigned_prefix);
     
     }
@@ -755,6 +758,7 @@ ospf6_ac_lsa_originate (struct thread *thread)
   {
     struct listnode *inner_node, *inner_nextnode;
     struct ospf6_assigned_prefix *assigned_prefix;
+    
     for (ALL_LIST_ELEMENTS (ifp->assigned_prefix_list, inner_node, inner_nextnode, assigned_prefix)) 
     {
       if (assigned_prefix->assigning_router_id == ospf6->router_id) {

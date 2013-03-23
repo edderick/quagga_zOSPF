@@ -114,7 +114,8 @@ ospf6_area_lsdb_hook_remove (struct ospf6_lsa *lsa)
       break;
 
     case OSPF6_LSTYPE_AC:
-      ospf6_assign_prefixes ();
+      /* XXX: Removed due to duplicate assignment */
+      /* ospf6_assign_prefixes (); */
       break;
     
     default:

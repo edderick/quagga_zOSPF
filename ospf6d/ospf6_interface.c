@@ -112,6 +112,8 @@ ospf6_interface_create (struct interface *ifp)
   oi->transdelay = OSPF6_INTERFACE_TRANSDELAY;
   oi->priority = OSPF6_INTERFACE_PRIORITY;
 
+  oi->assigned_prefix_list = list_new ();
+
   oi->hello_interval = OSPF6_INTERFACE_HELLO_INTERVAL;
   oi->dead_interval = OSPF6_INTERFACE_DEAD_INTERVAL;
   oi->rxmt_interval = OSPF6_INTERFACE_RXMT_INTERVAL;
@@ -183,6 +185,8 @@ ospf6_interface_delete (struct ospf6_interface *oi)
 
   /* cut link */
   oi->interface->info = NULL;
+
+  list_delete (oi->assigned_prefix_list);
 
   /* plist_name */
   if (oi->plist_name)
