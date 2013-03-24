@@ -173,7 +173,7 @@ struct ospf6_ac_tlv_aggregated_prefix
 
 /* TBD-BY-IANA-2 */
 #define OSPF6_AC_TLV_ASSIGNED_PREFIX 3U
-#define OSPF6_AC_TLV_ASSIGNED_PREFIX_LENGTH 4U
+#define OSPF6_AC_TLV_ASSIGNED_PREFIX_LENGTH 24U
 struct ospf6_ac_tlv_assigned_prefix
 {
   struct ospf6_ac_tlv_header header;

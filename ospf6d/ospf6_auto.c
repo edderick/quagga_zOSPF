@@ -473,7 +473,7 @@ DEFUN (show_ipv6_assigned_prefix,
 
 /* XXX: Move to prefix? */
 static u_int8_t 
-contains (struct prefix *container, struct prefix *containee)
+prefix_contains (struct prefix *container, struct prefix *containee)
 {
   int i;
   if (container->prefixlen > containee->prefixlen)
@@ -494,7 +494,6 @@ contains (struct prefix *container, struct prefix *containee)
   return 1;
 }
 
-
 static void
 mark_prefix_invalid (struct ospf6_assigned_prefix *ap)
 {
@@ -510,10 +509,10 @@ mark_prefix_valid (struct ospf6_assigned_prefix *ap)
 static void 
 mark_interface_prefixes_invalid (struct ospf6_interface *oi)
 {
-  struct listnode *node, *nextnode;
+  struct listnode *node, *nnode;
   struct ospf6_assigned_prefix *ap;
 
-  for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nextnode, ap))
+  for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nnode, ap))
   {
        mark_prefix_invalid (ap);
   }
@@ -522,24 +521,25 @@ mark_interface_prefixes_invalid (struct ospf6_interface *oi)
 static void 
 mark_area_prefixes_invalid (struct ospf6_area *oa)
 {
-  struct listnode *node, *nextnode;
+  struct listnode *node, *nnode;
   struct ospf6_interface *ifp;
 
-  for (ALL_LIST_ELEMENTS (oa->if_list, node, nextnode, ifp)) 
+  for (ALL_LIST_ELEMENTS (oa->if_list, node, nnode, ifp)) 
   {
     mark_interface_prefixes_invalid (ifp);
   }
 }
 
 static int
-lookup_source (struct ospf6_aggregated_prefix *ag_prefix)
+lookup_aggregated_prefix_source (struct ospf6_aggregated_prefix *ag_prefix)
 {
-  struct listnode *node, *nextnode;
+  struct listnode *node, *nnode;
   struct ospf6_aggregated_prefix *current_ag_prefix;
 
-  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nextnode, current_ag_prefix))
+  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, 
+			  node, nnode, current_ag_prefix))
   {
-    if (prefix_same(&current_ag_prefix->prefix, &ag_prefix->prefix))
+    if (prefix_same (&current_ag_prefix->prefix, &ag_prefix->prefix))
     {
       return current_ag_prefix->source;
     }
@@ -548,11 +548,60 @@ lookup_source (struct ospf6_aggregated_prefix *ag_prefix)
   return OSPF6_PREFIX_SOURCE_OSPF;
 }
 
+static struct ospf6_aggregated_prefix * 
+handle_aggregated_prefix_tlv (char *current, struct ospf6_lsa *current_lsa)
+{
+  struct ospf6_ac_tlv_aggregated_prefix *ac_tlv_ag_p 
+    = (struct ospf6_ac_tlv_aggregated_prefix *) current;
+  struct ospf6_aggregated_prefix *ag_prefix;
+
+  ag_prefix = malloc (sizeof (struct ospf6_aggregated_prefix));
+
+  ag_prefix->prefix.family = AF_INET6;
+  ag_prefix->prefix.prefixlen = ac_tlv_ag_p->prefix_length;
+  ag_prefix->prefix.prefix = ac_tlv_ag_p->prefix;
+
+  if (current_lsa->header->adv_router != ospf6->router_id) 
+  {
+    ag_prefix->source = OSPF6_PREFIX_SOURCE_OSPF;
+  }
+  else
+  {
+    ag_prefix->source = lookup_aggregated_prefix_source (ag_prefix);
+  }
+
+  ag_prefix->advertising_router_id = current_lsa->header->adv_router;
+
+  return ag_prefix;
+}
+
+static struct ospf6_assigned_prefix * 
+handle_assigned_prefix_tlv (char *current, struct ospf6_lsa *current_lsa)
+{
+  struct ospf6_ac_tlv_assigned_prefix *ac_tlv_as_p 
+    = (struct ospf6_ac_tlv_assigned_prefix *) current;
+  struct ospf6_assigned_prefix *as_prefix;
+
+  as_prefix = malloc (sizeof (struct ospf6_assigned_prefix));
+
+  as_prefix->prefix.family = AF_INET6;
+  as_prefix->prefix.prefixlen = ac_tlv_as_p->prefix_length;
+  as_prefix->prefix.prefix = ac_tlv_as_p->prefix;
+
+  as_prefix->assigning_router_id = current_lsa->header->adv_router;
+  as_prefix->assigning_router_if_id = ac_tlv_as_p->interface_id;
+
+  return as_prefix;
+}
+
 static void
-create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb, struct list *assigned_prefix_list, struct list *aggregated_prefix_list)
+create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb, struct list **assigned_prefix_list, struct list **aggregated_prefix_list)
 {
   struct ospf6_lsa *current_lsa;
-  
+ 
+  *assigned_prefix_list = list_new ();
+  *aggregated_prefix_list = list_new ();
+
   current_lsa = ospf6_lsdb_type_head (htons (OSPF6_LSTYPE_AC), lsdb);
 
   while (current_lsa != NULL) 
@@ -575,61 +624,20 @@ create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb, struct list *assigned_prefix_l
 
 	if (ac_tlv_header->type == OSPF6_AC_TLV_AGGREGATED_PREFIX)
 	{
-	    struct ospf6_ac_tlv_aggregated_prefix *ac_tlv_ag_p 
-	          = (struct ospf6_ac_tlv_aggregated_prefix *) current;
 	    struct ospf6_aggregated_prefix *ag_prefix;
-
-	    ag_prefix = malloc (sizeof (struct ospf6_aggregated_prefix));
-	    
-	    ag_prefix->prefix.family = AF_INET6;
-	    ag_prefix->prefix.prefixlen = ac_tlv_ag_p->prefix_length;
-	    ag_prefix->prefix.prefix = ac_tlv_ag_p->prefix;
-
-	    if (current_lsa->header->adv_router != ospf6->router_id) 
-	    {
-	      ag_prefix->source = OSPF6_PREFIX_SOURCE_OSPF;
-	    }
-	    else
-	    {
-	      ag_prefix->source = lookup_source (ag_prefix);
-	    }
-
-	    ag_prefix->advertising_router_id = current_lsa->header->adv_router;
-
-	    listnode_add (aggregated_prefix_list, ag_prefix);
-  
-	    zlog_warn ("    Added agg");
-
-	    current += sizeof (struct ospf6_ac_tlv_aggregated_prefix);
+	    ag_prefix = handle_aggregated_prefix_tlv (current, current_lsa);
+	    listnode_add (*aggregated_prefix_list, ag_prefix);
 	} 
 	else if (ac_tlv_header->type == OSPF6_AC_TLV_ASSIGNED_PREFIX)
 	{
-	    struct ospf6_ac_tlv_assigned_prefix *ac_tlv_as_p 
-	          = (struct ospf6_ac_tlv_assigned_prefix *) current;
 	    struct ospf6_assigned_prefix *as_prefix;
-
-	    as_prefix = malloc (sizeof (struct ospf6_assigned_prefix));
-
-	    as_prefix->prefix.family = AF_INET6;
-	    as_prefix->prefix.prefixlen = ac_tlv_as_p->prefix_length;
-	    as_prefix->prefix.prefix = ac_tlv_as_p->prefix;
-
-	    as_prefix->assigning_router_id = current_lsa->header->adv_router;
-	    as_prefix->assigning_router_if_id = ac_tlv_as_p->interface_id;
-
-	    listnode_add (assigned_prefix_list, as_prefix);
-
-	    zlog_warn ("    Added ass");
-
-	    current += sizeof (struct ospf6_ac_tlv_assigned_prefix);
-	} else {
-	  /* TLV doesn't concern us, skip it */
-	  current += sizeof (struct ospf6_ac_tlv_header) + ac_tlv_header->length;
-	}
+	    as_prefix = handle_assigned_prefix_tlv(current, current_lsa);
+	    listnode_add (*assigned_prefix_list, as_prefix);
+	} 
+	current += sizeof (struct ospf6_ac_tlv_header) + ac_tlv_header->length;
     }    
-
+    
     current_lsa = ospf6_lsdb_type_next (htons (OSPF6_LSTYPE_AC), current_lsa);
-    zlog_warn ("  Added an AC LSA to snapshot");
   }
 }
 
@@ -637,12 +645,12 @@ static struct list *
 generate_active_neighbor_list (struct list * neighbor_list)
 {
   struct list *active_neigbor_list;
-  struct listnode *node, *nextnode; 
+  struct listnode *node, *nnode; 
   struct ospf6_neighbor *neighbor;
 
   active_neigbor_list = list_new ();
     
-  for (ALL_LIST_ELEMENTS (neighbor_list, node, nextnode, neighbor))
+  for (ALL_LIST_ELEMENTS (neighbor_list, node, nnode, neighbor))
   {
     if (neighbor->state > OSPF6_NEIGHBOR_INIT)
     {
@@ -660,51 +668,71 @@ is_highest_rid (u_int32_t router_id, struct list *neighbor_list)
 
   for (ALL_LIST_ELEMENTS (neighbor_list, node, nextnode, neighbor))
   {
-    if (neighbor->router_id > router_id)
-    {
-      return 0;
-    }
+    if (neighbor->router_id > router_id) return 0;
   }
-
   return 1;
 }
 
 static struct ospf6_assigned_prefix *
-find_assignment (struct ospf6_neighbor *neighbor, struct list *assigned_prefix_list)
+find_neighbors_prefix_assignment (struct ospf6_aggregated_prefix *agp, 
+			   struct ospf6_neighbor *neighbor, 
+			   struct list *assigned_prefix_list)
 {
-  struct listnode *node, *nextnode;
+  struct listnode *node, *nnode;
   struct ospf6_assigned_prefix *ap;
 
-  //TODO: I think this is broken, needs to check agg 
-
-  for (ALL_LIST_ELEMENTS (assigned_prefix_list, node, nextnode, ap))
+  for (ALL_LIST_ELEMENTS (assigned_prefix_list, node, nnode, ap))
   {
     if((ap->assigning_router_id == neighbor->router_id) 
 	&& (ap->assigning_router_if_id == neighbor->ifindex))
     {
-      return ap;
+      if (prefix_contains (&agp->prefix, &ap->prefix)) return ap;
     }
   }
   return NULL;
 }
 
 static struct ospf6_assigned_prefix *
-find_highest_assignment (struct ospf6_aggregated_prefix *ag_prefix, struct list *neighbor_list, struct list *assigned_prefix_list)
+find_own_prefix_assignment (struct ospf6_aggregated_prefix *agp, 
+		     struct ospf6_interface *ifp, struct list *aspl)
 {
-  struct listnode *node, *nextnode;
-  struct ospf6_neighbor *neighbor;
+  struct listnode *node, *nnode;
+  struct ospf6_assigned_prefix *ap;
 
-  struct ospf6_assigned_prefix *highest_ap = NULL;
-
-  for (ALL_LIST_ELEMENTS (neighbor_list, node, nextnode, neighbor))
+  for (ALL_LIST_ELEMENTS (aspl, node, nnode, ap))
   {
-    struct ospf6_assigned_prefix *current_ap = find_assignment(neighbor, assigned_prefix_list);
+    if((ap->assigning_router_id == ospf6->router_id) 
+	&& (ap->assigning_router_if_id == ifp->interface->ifindex))
+    {
+	if (prefix_contains (&agp->prefix, &ap->prefix)) return ap;
+    }
+  }
+  return NULL;
+}
+
+
+static struct ospf6_assigned_prefix *
+find_highest_prefix_assignment (struct ospf6_aggregated_prefix *ag_prefix, 
+			 struct list *neighbor_list, 
+			 struct list *assigned_prefix_list)
+{
+  struct listnode *node, *nnode;
+  struct ospf6_neighbor *neighbor;
+  struct ospf6_assigned_prefix *highest_ap;
+  
+  highest_ap = NULL;
+
+  for (ALL_LIST_ELEMENTS (neighbor_list, node, nnode, neighbor))
+  {
+    struct ospf6_assigned_prefix *current_ap;
+    current_ap = find_neighbors_prefix_assignment (ag_prefix, neighbor, 
+						   assigned_prefix_list);
     if (current_ap != NULL)
     {
-      if (contains (&ag_prefix->prefix, &current_ap->prefix)) 
+      if (prefix_contains (&ag_prefix->prefix, &current_ap->prefix)) 
       {
 	if ( (highest_ap == NULL)
-	    || (current_ap->assigning_router_id > highest_ap->assigning_router_id))
+	|| (current_ap->assigning_router_id > highest_ap->assigning_router_id))
 	{ 
 	  highest_ap = current_ap;
 	}
@@ -716,9 +744,9 @@ find_highest_assignment (struct ospf6_aggregated_prefix *ag_prefix, struct list 
 }
 
 static u_int8_t
-is_prefix_valid_network_wide (struct ospf6_assigned_prefix *current_assigned_prefix, struct list *aspl)
+is_prefix_valid_network_wide (struct ospf6_assigned_prefix *current_assigned_prefix, 
+			      struct list *aspl)
 {
-  //Check all assigned prefixes in aspl for an assignment of the same prefix, with higher router id
   struct listnode *node, *nextnode;
   struct ospf6_assigned_prefix *prefix;
 
@@ -726,7 +754,8 @@ is_prefix_valid_network_wide (struct ospf6_assigned_prefix *current_assigned_pre
   {
     if (prefix_same (&prefix->prefix, &current_assigned_prefix->prefix))
     {
-      if (prefix->assigning_router_id > current_assigned_prefix->assigning_router_id)
+      if (prefix->assigning_router_id > 
+	  current_assigned_prefix->assigning_router_id)
       {
 	return 0;
       }
@@ -737,22 +766,24 @@ is_prefix_valid_network_wide (struct ospf6_assigned_prefix *current_assigned_pre
 }
 
 static u_int8_t 
-is_prefix_valid_locally (struct ospf6_assigned_prefix *current_assigned_prefix, struct ospf6_area *oa)
+is_prefix_valid_locally (struct ospf6_assigned_prefix *current_assigned_prefix, 
+			 struct ospf6_area *oa)
 {
-  struct listnode *node, *nextnode;
+  struct listnode *node, *nnode;
   struct ospf6_interface *ifp;
 
-  for (ALL_LIST_ELEMENTS (oa->if_list, node, nextnode, ifp))
+  for (ALL_LIST_ELEMENTS (oa->if_list, node, nnode, ifp))
   {
-    /* Check all existiting prefixes on interface */
-    struct listnode *inner_node, *inner_nextnode;
+    struct listnode *inner_node, *inner_nnode;
     struct ospf6_assigned_prefix *ap;
     
-    for (ALL_LIST_ELEMENTS (ifp->assigned_prefix_list, inner_node, inner_nextnode, ap))
+    for (ALL_LIST_ELEMENTS (ifp->assigned_prefix_list, 
+			    inner_node, inner_nnode, ap))
     {
       if (prefix_same (&ap->prefix, &current_assigned_prefix->prefix))
       {
-	if (ap->assigning_router_id > current_assigned_prefix->assigning_router_id)
+	if (ap->assigning_router_id > 
+	    current_assigned_prefix->assigning_router_id)
 	{
 	  return 0;
 	}
@@ -765,90 +796,65 @@ is_prefix_valid_locally (struct ospf6_assigned_prefix *current_assigned_prefix, 
 static struct list *
 create_in_use_list (struct ospf6_aggregated_prefix *agp, struct list *aspl)
 {
-  struct listnode *node, *nextnode;
+  struct listnode *node, *nnode;
   struct ospf6_assigned_prefix *ap;
-  
   struct list *in_use_list;
+  
   in_use_list = list_new ();
 
-  for (ALL_LIST_ELEMENTS (aspl, node, nextnode, ap))
+  for (ALL_LIST_ELEMENTS (aspl, node, nnode, ap))
   {
-    if (contains (&agp->prefix, &ap->prefix))
-    {
-      //TODO: Do we need to create a copy?
-      listnode_add (in_use_list, ap);
-    }
+    if (prefix_contains (&agp->prefix, &ap->prefix)) listnode_add (in_use_list, ap);
   }
   return in_use_list;
 }
 
-static u_int64_t 
-pow (u_int64_t base, u_int64_t exp)
+static void 
+increment_prefix (struct prefix *prefix)
 {
-  int result = 1;
-  while (exp)
-  {
-    if (exp & 1)
-      result *= base;
-    exp >>= 1;
-    base *= base;
-  }
+  /* Convert to a little endian number and increment */
+  u_int64_t numeric_prefix;
 
-  return result;
+  memcpy (&numeric_prefix, &prefix->u.prefix6, 8);
+
+  numeric_prefix = be64toh (numeric_prefix);
+  numeric_prefix++;
+  numeric_prefix = htobe64 (numeric_prefix);
+
+  memcpy (&prefix->u.prefix6, &numeric_prefix, 8);
 }
 
 static struct prefix* 
-pick_prefix (struct ospf6_aggregated_prefix *agp, struct list *in_use_prefixes)
+choose_first_unassigned_prefix (struct ospf6_aggregated_prefix *agp, 
+				struct list *in_use_prefixes)
 {
-  /* Cycle through prefixes sequentially */
-  /* Use the first one that is free */
-  
-  u_char len_diff = 64 - agp->prefix.prefixlen;
-  u_int64_t limit = pow (2, len_diff);
-  u_int64_t start_prefix;
-  u_int64_t end_prefix;
-
-  memcpy (&start_prefix, &agp->prefix.prefix, 8);
-  start_prefix = be64toh (start_prefix);
-  end_prefix = start_prefix + limit;
-
-  u_int64_t current_prefix;
   struct prefix *new_prefix; 
-
+  struct listnode *node, *nnode; 
+  struct prefix *prefix;
+  u_int8_t collides; 
+  
   new_prefix = prefix_new ();
-  new_prefix->family = AF_INET6;
+  prefix_copy (new_prefix, &agp->prefix);
+  apply_mask (new_prefix);
   new_prefix->prefixlen = 64;
 
-  for (current_prefix = start_prefix; current_prefix < end_prefix; current_prefix++)
+  while (prefix_contains (&agp->prefix, new_prefix)) 
   {
-    struct listnode *node, *nextnode; 
-    struct prefix *prefix;
-    
-    u_int64_t be_prefix = htobe64 (current_prefix);
+    collides = 0;
 
-    memcpy (&new_prefix->u.prefix6, &be_prefix, 8);
-
-    u_int8_t collides = 0;
-
-    for (ALL_LIST_ELEMENTS (in_use_prefixes, node, nextnode, prefix))
+    for (ALL_LIST_ELEMENTS (in_use_prefixes, node, nnode, prefix))
     {
-      zlog_warn ("in use?");
-      /* Matches, set collides flag */
       if (prefix_same (new_prefix, prefix))
       {
 	  collides = 1; 
-	  zlog_warn ("yup");
 	  break;
       }
     }
     
-    if (collides == 0)
-    {
-      return new_prefix; 
-    }
+    if (collides == 0) return new_prefix; 
+    
+    increment_prefix (new_prefix);
   }
-
-  zlog_warn("cannaye Do it");
 
   /* Address space exhaustion!! */
   prefix_free (new_prefix);
@@ -856,7 +862,8 @@ pick_prefix (struct ospf6_aggregated_prefix *agp, struct list *in_use_prefixes)
 }
 
 static void 
-make_assignment (struct ospf6_aggregated_prefix *agp, struct ospf6_interface *ifp, struct list *aspl)
+make_prefix_assignment (struct ospf6_aggregated_prefix *agp, 
+		 struct ospf6_interface *ifp, struct list *aspl)
 {
   struct list *in_use_prefixes; 
   struct prefix *prefix;  
@@ -868,7 +875,7 @@ make_assignment (struct ospf6_aggregated_prefix *agp, struct ospf6_interface *if
       //XXX: Skip for now    
 
     //Use an unassigned prefix 
-    prefix = pick_prefix (agp, in_use_prefixes);
+    prefix = choose_first_unassigned_prefix (agp, in_use_prefixes);
 
     //Hysteria?
     
@@ -885,7 +892,8 @@ make_assignment (struct ospf6_aggregated_prefix *agp, struct ospf6_interface *if
 
       assigned_prefix->assigning_router_id = ospf6->router_id;
       assigned_prefix->assigning_router_if_id = ifp->interface->ifindex;
-      assigned_prefix->is_valid = 1;
+      
+      mark_prefix_valid (assigned_prefix);
 
       listnode_add (ifp->assigned_prefix_list, assigned_prefix);  
       listnode_add (aspl, assigned_prefix);
@@ -894,53 +902,102 @@ make_assignment (struct ospf6_aggregated_prefix *agp, struct ospf6_interface *if
     }
 }
 
-static struct ospf6_assigned_prefix *
-has_made_assignment (struct ospf6_aggregated_prefix *agp, struct ospf6_interface *ifp, struct list *aspl)
-{
-  struct listnode *node, *nextnode;
-  struct ospf6_assigned_prefix *ap;
 
-  for (ALL_LIST_ELEMENTS (aspl, node, nextnode, ap))
+static void 
+handle_self_assigned (struct ospf6_assigned_prefix *existing_assigned_prefix, 
+		      struct ospf6_interface *ifp, struct list *aspl)
+{
+  struct listnode *node, *nnode;
+  struct ospf6_assigned_prefix *prefix;
+
+  if (is_prefix_valid_network_wide (existing_assigned_prefix, aspl))
   {
-    zlog_warn ("me?");
-    if((ap->assigning_router_id == ospf6->router_id) 
-	&& (ap->assigning_router_if_id == ifp->interface->ifindex))
+    /* Keep using prefix (Mark it as valid) */
+    for (ALL_LIST_ELEMENTS (ifp->assigned_prefix_list, node, nnode, prefix))
     {
-      zlog_warn ("yeah");
-	if (contains (&agp->prefix, &ap->prefix)) 
-      {
-	return ap;
+      if (prefix_same (&prefix->prefix, &existing_assigned_prefix->prefix)) {
+	mark_prefix_valid (prefix);
       }
     }
   }
-  return NULL;
+  else 
+  {
+    //Deprecate prefix
+    for (ALL_LIST_ELEMENTS (ifp->assigned_prefix_list, node, nnode, prefix))
+    {
+      if (prefix_same (&prefix->prefix, &existing_assigned_prefix->prefix)) {
+	mark_prefix_invalid (prefix);
+      }
+    }
+
+    //TODO: Send out RA
+    originate_new_ac_lsa ();
+  }
 }
 
 static void 
-check_prefix_interface_pair (struct ospf6_aggregated_prefix *agp, struct ospf6_interface *ifp, struct list *aspl)
+handle_other_assigned (struct ospf6_assigned_prefix *existing_assigned_prefix, 
+			  struct ospf6_interface *ifp, struct list *aspl)
 {
+    struct listnode *node, *nnode;
+    struct ospf6_assigned_prefix *prefix;
+
+    for (ALL_LIST_ELEMENTS (ifp->assigned_prefix_list, node, nnode, prefix))
+    {
+      if (prefix_same (&prefix->prefix, &existing_assigned_prefix->prefix)) {
+	mark_prefix_valid(prefix);
+	return;
+      }
+    }
+    
+    if (is_prefix_valid_locally (existing_assigned_prefix, ifp->area))
+    {
+      mark_prefix_valid (existing_assigned_prefix);
+      listnode_add (ifp->assigned_prefix_list, existing_assigned_prefix);  
+      listnode_add (aspl, existing_assigned_prefix);
+    }
+   
+    /* Silently ignore invalid assignments */
+}
+
+static void 
+handle_self_not_assigned (struct ospf6_aggregated_prefix *current_aggregate_prefix, 
+		       struct ospf6_interface *ifp, struct list *aspl)
+{
+    /* Make assignment from this aggregated prefix */
+    make_prefix_assignment (current_aggregate_prefix, ifp, aspl);
+}
+
+static void 
+handle_other_not_assigned (struct ospf6_aggregated_prefix *current_aggregate_prefix, 
+			   struct ospf6_interface *ifp, struct list *aspl)
+{
+  /* Draft specifies to do nothing */
+}
+
+static void 
+process_prefix_interface_pair (struct ospf6_aggregated_prefix *agp, 
+			       struct ospf6_interface *ifp, struct list *aspl)
+{
+  struct list *active_neigbor_list;
   u_int8_t has_highest_rid, has_highest_assignment;
   struct ospf6_assigned_prefix *highest_assigned_prefix;
+ 
+  active_neigbor_list = generate_active_neighbor_list (ifp->neighbor_list);
 
-  /* Generate neighbor list */  
-  struct list *active_neigbor_list = generate_active_neighbor_list (ifp->neighbor_list);
-
-  /* Determine if an assignment must be made */
-  /* Highest Router ID? */
   has_highest_rid = is_highest_rid (ospf6->router_id, active_neigbor_list);
+  highest_assigned_prefix = find_highest_prefix_assignment (agp, 
+						 active_neigbor_list, aspl);
 
-  /* Is there already an assignment? */
-  highest_assigned_prefix = find_highest_assignment (agp, active_neigbor_list, aspl);
-
+  list_free (active_neigbor_list);
   /* Is Router ID higher than current assigner? */
-  
   has_highest_assignment = 0;
   
   if ((highest_assigned_prefix 
 	&& ospf6->router_id > highest_assigned_prefix->assigning_router_id) 
       || highest_assigned_prefix == NULL)
   {
-    highest_assigned_prefix = has_made_assignment (agp, ifp, aspl);
+    highest_assigned_prefix = find_own_prefix_assignment (agp, ifp, aspl);
     
     if (highest_assigned_prefix != NULL)
     {
@@ -948,102 +1005,37 @@ check_prefix_interface_pair (struct ospf6_aggregated_prefix *agp, struct ospf6_i
     }
   }
 
-  /* Decide the what to do: */
-  /* This router has made an assignment. Noone with a higher RID has also made one */
   if (has_highest_assignment)
   {
-    zlog_warn ("Assignment, me!");
-    /* Ensure network validity */
-    if (is_prefix_valid_network_wide (highest_assigned_prefix, aspl))
-    {
-      /* Keep using prefix */
-      //Mark as valid, and move on with your life.
-      struct listnode *node, *nextnode;
-      struct ospf6_assigned_prefix *prefix;
-
-      for (ALL_LIST_ELEMENTS (ifp->assigned_prefix_list, node, nextnode, prefix))
-      {
-	if (prefix_same (&prefix->prefix, &highest_assigned_prefix->prefix)) {
-	  mark_prefix_valid (prefix);
-	}
-      }
-    }
-    else 
-    {
-      /* Stop using prefix */
-      zlog_warn ("Someone better has that you muppet");
-      //Deprecate prefix
-      struct listnode *node, *nextnode;
-      struct ospf6_assigned_prefix *prefix;
-
-      for (ALL_LIST_ELEMENTS (ifp->assigned_prefix_list, node, nextnode, prefix))
-      {
-	if (prefix_same (&prefix->prefix, &highest_assigned_prefix->prefix)) {
-	  mark_prefix_invalid (prefix);
-	}
-      }
-      
-      //TODO: Send out RA
-
-      originate_new_ac_lsa ();
-
-    }
+    handle_self_assigned (highest_assigned_prefix, ifp, aspl);
   }
-  /* Someone else has made an assignment. This router hasn't made one or has a lower RID */
   else if (highest_assigned_prefix != NULL)
   {
-    zlog_warn("Assignment, Someone else");
-    /* Ensure local validity */
-    //If it already exists, mark it as valid.
-    struct listnode *node, *nextnode;
-    struct ospf6_assigned_prefix *prefix;
-
-    for (ALL_LIST_ELEMENTS (ifp->assigned_prefix_list, node, nextnode, prefix))
-    {
-      if (prefix_same (&prefix->prefix, &highest_assigned_prefix->prefix)) {
-	mark_prefix_valid(prefix);
-	return;
-      }
-    }
-
-    //If it's not, make sure there isn't a colliding assigment 
-    //--> if it does colide. Silently ignore it.
-    
-    if (is_prefix_valid_locally (highest_assigned_prefix, ifp->area))
-    {
-      /* Install that prefix */
-      mark_prefix_valid (highest_assigned_prefix);
-      listnode_add (ifp->assigned_prefix_list, highest_assigned_prefix);  
-      listnode_add (aspl, highest_assigned_prefix);
-    }
-    
+    handle_other_assigned (highest_assigned_prefix, ifp, aspl);
   }
-  /* No assigment. Highest RID */
   else if (has_highest_rid) 
   {
-    zlog_warn ("No Assignment. Highest RID");
-    /* Make assignment from this aggregated prefix */
-    make_assignment (agp, ifp, aspl);
+    handle_self_not_assigned (agp, ifp, aspl); 
   }
-  /* No assignment. Not highest RID */
   else 
   {
-    zlog_warn ("No Assignment. Not Highest RID");
-    /* Do nothing - else not really needed :p */
+    handle_other_not_assigned (agp, ifp, aspl);
   }
 }
 
 static u_int8_t
-exists_containing_prefix (struct ospf6_aggregated_prefix *aggregated_prefix, struct list *aggregated_prefix_list)
+exists_containing_prefix (struct ospf6_aggregated_prefix *aggregated_prefix, 
+			  struct list *aggregated_prefix_list)
 {
-  struct listnode *node, *nextnode;
+  struct listnode *node, *nnode;
   struct ospf6_aggregated_prefix *current_prefix; 
   
-  for (ALL_LIST_ELEMENTS (aggregated_prefix_list, node, nextnode, current_prefix))
+  for (ALL_LIST_ELEMENTS (aggregated_prefix_list, node, nnode, current_prefix))
   {
-    if (contains (current_prefix, aggregated_prefix) && (current_prefix != aggregated_prefix)) 
+    if (prefix_contains (current_prefix, aggregated_prefix) 
+	&& (current_prefix != aggregated_prefix)) 
     {
-	return 1;
+      return 1;
     }
   }
 
@@ -1051,85 +1043,79 @@ exists_containing_prefix (struct ospf6_aggregated_prefix *aggregated_prefix, str
 }
 
 static void 
-loop_through_prefix_interface_pairs (struct ospf6_area *oa, struct list *aggregated_prefix_list, struct list *assigned_prefix_list)
+process_prefix_interface_pairs (struct ospf6_area *oa, 
+				struct list *aggregated_prefix_list, 
+				struct list *assigned_prefix_list)
 {
-  struct listnode *node, *nextnode;
+  struct listnode *node, *nnode;
   struct ospf6_aggregated_prefix *ag_prefix;
 
-  for (ALL_LIST_ELEMENTS (aggregated_prefix_list, node, nextnode, ag_prefix)) 
+  for (ALL_LIST_ELEMENTS (aggregated_prefix_list, node, nnode, ag_prefix)) 
   {
-    struct listnode *inner_node, *inner_nextnode;
+    struct listnode *inner_node, *inner_nnode;
     struct ospf6_interface *ifp;
-    /* Do stuff for ifp and ag_prefix */   
-    if (!exists_containing_prefix(ag_prefix, aggregated_prefix_list))
+
+    if (!exists_containing_prefix (ag_prefix, aggregated_prefix_list))
     {	
-      for (ALL_LIST_ELEMENTS (oa->if_list, inner_node, inner_nextnode, ifp)) 
+      for (ALL_LIST_ELEMENTS (oa->if_list, inner_node, inner_nnode, ifp)) 
       {
-	check_prefix_interface_pair(ag_prefix, ifp, assigned_prefix_list);
+	process_prefix_interface_pair (ag_prefix, ifp, assigned_prefix_list);
       }
     }
   }
 }
 
 static void 
-delete_invalid_interface_assigned_prefixes (struct ospf6_interface *oi)
+delete_invalid_assigned_prefixes_on_interface (struct ospf6_interface *oi)
 {
-  struct listnode *node, *nextnode;
+  struct listnode *node, *nnode;
   struct ospf6_assigned_prefix *ap;
 
-  for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nextnode, ap))
+  for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nnode, ap))
   {
-    if (!ap->is_valid)
-    {
-       listnode_delete (oi->assigned_prefix_list, ap);
-    }
+    if (!ap->is_valid) listnode_delete (oi->assigned_prefix_list, ap);
   }
 }
 
 static void 
-delete_invalid_area_assigned_prefixes (struct ospf6_area *oa)
+delete_invalid_assigned_prefixes_in_area (struct ospf6_area *oa)
 {
-  struct listnode *node, *nextnode;
+  struct listnode *node, *nnode;
   struct ospf6_interface *ifp;
 
-  for (ALL_LIST_ELEMENTS (oa->if_list, node, nextnode, ifp)) 
+  for (ALL_LIST_ELEMENTS (oa->if_list, node, nnode, ifp)) 
   {
-    delete_invalid_interface_assigned_prefixes (ifp);
+    delete_invalid_assigned_prefixes_on_interface (ifp);
   }
 }
-
 
 void 
 ospf6_assign_prefixes (void)
 {
   struct ospf6_area *backbone_area;
   struct list *assigned_prefix_list, *aggregated_prefix_list;
+  
   zlog_warn ("Running assignment algorithm");
- 
+
   /* OSPFv3 Autoconf only runs on the backbone */
   backbone_area = ospf6_area_lookup (0, ospf6);
 
-  /* Mark all assignments and invalid */
   mark_area_prefixes_invalid (backbone_area);
 
-  /* Create Snapshot of LSBD */
-  assigned_prefix_list = list_new ();
-  aggregated_prefix_list = list_new ();
-  create_ac_lsdb_snapshot (backbone_area->lsdb, assigned_prefix_list, aggregated_prefix_list);
+  create_ac_lsdb_snapshot (backbone_area->lsdb, 
+      &assigned_prefix_list, &aggregated_prefix_list);
 
-  /* For each Aggregated Prefix - Interface Pair */
-  loop_through_prefix_interface_pairs (backbone_area, aggregated_prefix_list, assigned_prefix_list);
+  process_prefix_interface_pairs (backbone_area, 
+      aggregated_prefix_list, assigned_prefix_list);
     
-  /* Delete ALL invalid assignments */
-  delete_invalid_area_assigned_prefixes (backbone_area);
+  delete_invalid_assigned_prefixes_in_area (backbone_area);
 
-  /* Use aggregated prefix list */
+  /* Tidy up */
+  /* Keep hold of aggregated prefix list */
   list_delete (ospf6->aggregated_prefix_list);
   ospf6->aggregated_prefix_list = aggregated_prefix_list;
 
-  /* Tidy up */
-  /*list_delete (assigned_prefix_list);*/
-  /*list_delete (aggregated_prefix_list);*/
+  list_free (assigned_prefix_list);
 }
 
 /* Install autoconf related commands. */
