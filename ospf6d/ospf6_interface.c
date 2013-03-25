@@ -113,6 +113,7 @@ ospf6_interface_create (struct interface *ifp)
   oi->priority = OSPF6_INTERFACE_PRIORITY;
 
   oi->assigned_prefix_list = list_new ();
+  oi->associated_prefixes = list_new ();
 
   oi->hello_interval = OSPF6_INTERFACE_HELLO_INTERVAL;
   oi->dead_interval = OSPF6_INTERFACE_DEAD_INTERVAL;
@@ -740,6 +741,12 @@ interface_down (struct thread *thread)
   list_delete_all_node (oi->neighbor_list);
 
   return 0;
+}
+
+void
+ospf6_associated_prefix_writer (struct thread *thread)
+{
+        ospf6_write_associated_prefixes_to_file ((struct ospf6_interface *) THREAD_ARG (thread));
 }
 
 

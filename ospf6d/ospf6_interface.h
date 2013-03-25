@@ -51,6 +51,10 @@ struct ospf6_interface
   /* list of prefixes assigned to this I/F */
   struct list *assigned_prefix_list;
 
+  /* list of prefixes stored in non-volatile memory */
+  struct list *associated_prefixes;
+  struct thread *associated_prefixes_writer;
+
   /* Interface ID; use interface->ifindex */
 
   /* ospf6 instance id */
@@ -159,6 +163,8 @@ extern int interface_down (struct thread *);
 extern int wait_timer (struct thread *);
 extern int backup_seen (struct thread *);
 extern int neighbor_change (struct thread *);
+
+extern void ospf6_associated_prefix_writer (struct thread *);
 
 extern void ospf6_interface_init (void);
 

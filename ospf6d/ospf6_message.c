@@ -980,7 +980,6 @@ ospf6_lsa_examin (struct ospf6_lsa_header *lsah, const u_int16_t lsalen, const u
     }
     break;
   case OSPF6_LSTYPE_AC:
-  	zlog_warn("Received AC LSA");
     break;
   case OSPF6_LSTYPE_NETWORK:
     /* RFC5340 A.4.4, LSA header + OSPF6_NETWORK_LSA_MIN_SIZE bytes

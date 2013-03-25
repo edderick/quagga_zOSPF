@@ -39,7 +39,12 @@ int ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header);
 
 void ospf6_assign_prefixes (void); 
 
+void ospf6_write_associated_prefixes_to_file (struct ospf6_interface *ifp);
+void ospf6_read_asociated_prefixes_from_file (void);
+
 #define R_HW_FP_BYTELEN 4
 #define R_HW_FP_CMP(D,S)   memcmp ((D), (S), R_HW_FP_BYTELEN)
+
+#define ASSOCIATED_PREFIXES_MAX_LEN 5
 
 #endif /* OSPF6_AUTO_H */
