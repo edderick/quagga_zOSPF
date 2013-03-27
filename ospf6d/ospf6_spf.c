@@ -43,6 +43,43 @@
 
 unsigned char conf_debug_ospf6_spf = 0;
 
+/* XXX: LSA reachability methods probably don't belong here */
+static void 
+set_all_lsas_unreachable (struct ospf6_lsdb *lsdb)
+{
+  struct ospf6_lsa *lsa;
+
+  lsa = ospf6_lsdb_head (lsdb);
+
+  while (lsa != NULL)
+  {
+    if (lsa->header->adv_router != ospf6->router_id
+	&& OSPF6_LSA_SCOPE (lsa->header->type) == OSPF6_SCOPE_AREA)  
+    {
+      lsa->reachable = 0;
+    }
+    lsa = ospf6_lsdb_next (lsa);
+  }
+}
+
+static void 
+set_routers_lsas_reachable (struct ospf6_lsa *router_lsa, struct ospf6_lsdb *lsdb)
+{
+  struct ospf6_lsa *lsa;
+
+  lsa = ospf6_lsdb_head (lsdb);
+
+  while (lsa != NULL)
+  {
+    if (lsa->header->adv_router == router_lsa->header->adv_router
+	&& OSPF6_LSA_SCOPE (lsa->header->type) == OSPF6_SCOPE_AREA)
+    {
+      lsa->reachable = 1;
+    }
+    lsa = ospf6_lsdb_next (lsa);
+  }
+}
+
 static int
 ospf6_vertex_cmp (void *a, void *b)
 {
@@ -397,6 +434,9 @@ ospf6_spf_calculation (u_int32_t router_id,
   /* construct root vertex */
   lsa = ospf6_lsdb_lookup (htons (OSPF6_LSTYPE_ROUTER), htonl (0),
                            router_id, oa->lsdb);
+  
+  set_all_lsas_unreachable (oa->lsdb);
+  
   if (lsa == NULL)
     return;
 
@@ -419,6 +459,9 @@ ospf6_spf_calculation (u_int32_t router_id,
     {
       /* get closest candidate from priority queue */
       v = pqueue_dequeue (candidate_list);
+
+      /* XXX: LSA is used as a vertex, must be reachable? */
+      set_routers_lsas_reachable (v->lsa, v->lsa->lsdb);
 
       /* installing may result in merging or rejecting of the vertex */
       if (ospf6_spf_install (v, result_table) < 0)

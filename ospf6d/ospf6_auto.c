@@ -605,6 +605,12 @@ create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb, struct list **assigned_prefix_
     struct ospf6_ac_lsa * ac_lsa;
     char *start, *end, *current;
     
+    if (!current_lsa->reachable) 
+    {
+      current_lsa = ospf6_lsdb_type_next (htons (OSPF6_LSTYPE_AC), current_lsa);
+      continue;
+    }
+
     /* Process LSA */
     ac_lsa = (struct ospf6_ac_lsa *)
         ((char *) current_lsa->header + sizeof (struct ospf6_lsa_header));
@@ -1302,6 +1308,22 @@ ospf6_assign_prefixes (void)
   ospf6->aggregated_prefix_list = aggregated_prefix_list;
 
   list_free (assigned_prefix_list);
+}
+
+static void 
+ospf6_assign_prefixes_thread (struct thread *t)
+{
+  ospf6->assign_prefix_thread = NULL;
+  ospf6_assign_prefixes ();
+}
+
+void 
+ospf6_schedule_assign_prefixes (void) 
+{
+  if (ospf6->assign_prefix_thread) 
+    return;
+  ospf6->assign_prefix_thread =
+    thread_add_event (master, ospf6_assign_prefixes_thread, NULL, 0);
 }
 
 /* Install autoconf related commands. */

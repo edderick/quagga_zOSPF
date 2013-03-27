@@ -67,6 +67,7 @@ struct ospf6
   u_char flag;
 
   struct thread *maxage_remover;
+  struct thread *assign_prefix_thread;
 };
 
 #define OSPF6_DISABLED    0x01

@@ -132,6 +132,8 @@ struct ospf6_lsa
 
   int               retrans_count;
 
+  char		    reachable;
+
   struct ospf6_lsdb *lsdb;
 
   /* lsa instance */

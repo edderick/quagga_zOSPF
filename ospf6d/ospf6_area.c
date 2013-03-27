@@ -68,6 +68,7 @@ ospf6_area_lsdb_hook_add (struct ospf6_lsa *lsa)
 		      OSPF6_AREA (lsa->lsdb->data)->name);
         }
       ospf6_spf_schedule (OSPF6_AREA (lsa->lsdb->data));
+      ospf6_schedule_assign_prefixes ();
       break;
 
     case OSPF6_LSTYPE_INTRA_PREFIX:
@@ -80,7 +81,7 @@ ospf6_area_lsdb_hook_add (struct ospf6_lsa *lsa)
       break;
   
     case OSPF6_LSTYPE_AC:
-      ospf6_assign_prefixes ();
+      ospf6_schedule_assign_prefixes ();
       break;
 
     default:
@@ -102,6 +103,7 @@ ospf6_area_lsdb_hook_remove (struct ospf6_lsa *lsa)
                      OSPF6_AREA (lsa->lsdb->data)->name);
         }
       ospf6_spf_schedule (OSPF6_AREA (lsa->lsdb->data));
+      ospf6_schedule_assign_prefixes ();
       break;
 
     case OSPF6_LSTYPE_INTRA_PREFIX:
@@ -114,8 +116,7 @@ ospf6_area_lsdb_hook_remove (struct ospf6_lsa *lsa)
       break;
 
     case OSPF6_LSTYPE_AC:
-      /* XXX: Removed due to duplicate assignment */
-      /* ospf6_assign_prefixes (); */
+       ospf6_schedule_assign_prefixes (); 
       break;
     
     default:

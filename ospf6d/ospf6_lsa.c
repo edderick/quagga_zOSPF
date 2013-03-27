@@ -494,6 +494,8 @@ ospf6_lsa_create (struct ospf6_lsa_header *header)
   /* calculate birth of this lsa */
   ospf6_lsa_age_set (lsa);
 
+  lsa->reachable = 1;
+
   return lsa;
 }
 
