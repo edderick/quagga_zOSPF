@@ -1265,7 +1265,10 @@ delete_invalid_assigned_prefixes_on_interface (struct ospf6_interface *oi)
 
   for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nnode, ap))
   {
-    if (!ap->is_valid) listnode_delete (oi->assigned_prefix_list, ap);
+    if (!ap->is_valid) {
+      listnode_delete (oi->assigned_prefix_list, ap);
+      originate_new_ac_lsa ();
+    }
   }
 }
 
