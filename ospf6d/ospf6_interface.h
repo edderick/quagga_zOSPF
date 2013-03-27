@@ -50,6 +50,7 @@ struct ospf6_interface
 
   /* list of prefixes assigned to this I/F */
   struct list *assigned_prefix_list;
+  struct list *pending_prefix_list;
 
   /* list of prefixes stored in non-volatile memory */
   struct list *associated_prefixes;

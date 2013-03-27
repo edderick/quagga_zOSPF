@@ -19,6 +19,11 @@ struct ospf6_aggregated_prefix
 #define OSPF6_PREFIX_SOURCE_GENERATED_STRING "Automatically Generated"
 #define OSPF6_PREFIX_SOURCE_OSPF_STRING "Received From Neighbouring Router"
 
+#define OSPF6_NEW_ULA_PREFIX_SECONDS		    20
+#define OSPF6_TERMINATE_ULA_PREFIX_SECONDS	    120 
+#define OSPF6_NEW_PREFIX_ASSIGNMENT_SECONDS	    20 
+#define OSPF6_TERMINATE_PREFIX_ASSIGNMENT_SECONDS   240 
+
 /* Prefix that has been assigned to a link by some router */
 struct ospf6_assigned_prefix 
 {
@@ -26,6 +31,9 @@ struct ospf6_assigned_prefix
   u_int32_t assigning_router_id;
   u_int32_t assigning_router_if_id;
   u_int8_t is_valid;
+
+  struct thread *pending_thread;
+  struct thread *deprecation_thread;
 };
 
 u_int32_t ospf6_generate_router_id ();

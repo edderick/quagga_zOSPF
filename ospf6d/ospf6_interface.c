@@ -114,6 +114,7 @@ ospf6_interface_create (struct interface *ifp)
   oi->priority = OSPF6_INTERFACE_PRIORITY;
 
   oi->assigned_prefix_list = list_new ();
+  oi->pending_prefix_list = list_new ();
   oi->associated_prefixes = list_new ();
 
   oi->hello_interval = OSPF6_INTERFACE_HELLO_INTERVAL;
