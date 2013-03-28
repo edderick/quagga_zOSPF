@@ -1255,7 +1255,7 @@ DEFUN (ipv6_nd_prefix,
 /* XXX: Consider reducing code repetition */
 /* Expose ipv6 nd prefix to the outside world */
 int 
-ipv6_nd_prefix_no_vty (struct interface *ifp, struct prefix_ipv6 *prefix)
+ipv6_nd_prefix_no_vty (struct interface *ifp, struct prefix_ipv6 *prefix, u_int32_t lifetime)
 {
   struct zebra_if *zebra_if;
   struct rtadv_prefix rp;
@@ -1270,8 +1270,8 @@ ipv6_nd_prefix_no_vty (struct interface *ifp, struct prefix_ipv6 *prefix)
   rp.AdvOnLinkFlag = 1;
   rp.AdvAutonomousFlag = 1;
   rp.AdvRouterAddressFlag = 0;
-  rp.AdvValidLifetime = RTADV_VALID_LIFETIME;
-  rp.AdvPreferredLifetime = RTADV_PREFERRED_LIFETIME;
+  rp.AdvValidLifetime = lifetime;
+  rp.AdvPreferredLifetime = lifetime;
 
   rtadv_prefix_set (zebra_if, &rp);
 

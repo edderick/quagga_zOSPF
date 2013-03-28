@@ -1200,6 +1200,7 @@ zread_ipv6_nd_prefix (struct zserv *client, u_short length)
   unsigned int ifindex;
   struct prefix_ipv6 prefix;
   int i;
+  u_int32_t lifetime;
 
   s = client->ibuf;
 
@@ -1213,7 +1214,9 @@ zread_ipv6_nd_prefix (struct zserv *client, u_short length)
     prefix.prefix.s6_addr[i] = stream_getc (s);
   }
 
-  ipv6_nd_prefix_no_vty (if_lookup_by_index(ifindex), &prefix);
+  lifetime = stream_getl (s);
+
+  ipv6_nd_prefix_no_vty (if_lookup_by_index(ifindex), &prefix, lifetime);
   return 0;
 }
 

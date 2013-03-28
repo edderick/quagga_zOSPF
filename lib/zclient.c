@@ -441,6 +441,37 @@ zebra_ipv6_nd_prefix (struct zclient *zclient, int ifindex, struct prefix_ipv6 *
   for (i = 0; i < 16; i++){
     stream_putc (s, prefix->prefix.s6_addr[i]);
   }
+  stream_putl (s, ZEBRA_DEFAULT_PREFIX_LIFETIME);
+  
+  /* Put length at the first point of the stream. */
+  stream_putw_at (s, 0, stream_get_endp (s));
+
+  zlog_warn ("Sending zebra_ipv6_nd_prefix");
+
+  return zclient_send_message (zclient);
+}
+
+int 
+zebra_ipv6_nd_no_prefix (struct zclient *zclient, int ifindex, struct prefix_ipv6 *prefix)
+{
+  struct stream *s;
+  int i;
+
+  s= zclient->obuf;
+  stream_reset (s);
+
+  zclient_create_header (s, ZEBRA_IPV6_ND_PREFIX);
+
+  /* Add interface to the message */
+  stream_putl (s, ifindex);
+
+  /* Add Prefix to the message */
+  stream_putc (s, prefix->family);
+  stream_putc (s, prefix->prefixlen);
+  for (i = 0; i < 16; i++){
+    stream_putc (s, prefix->prefix.s6_addr[i]);
+  }
+  stream_putl (s, ZEBRA_ZERO_PREFIX_LIFETIME);
 
   /* Put length at the first point of the stream. */
   stream_putw_at (s, 0, stream_get_endp (s));

@@ -63,8 +63,7 @@ extern void rtadv_init (void);
 
 /* Autoconf extensions */
 int no_ipv6_nd_suppress_ra_func (struct vty *vty, struct interface *ifp);
-int ipv6_nd_prefix_no_vty (struct interface *ifp, struct prefix_ipv6 *prefix);
-
+int ipv6_nd_prefix_no_vty (struct interface *ifp, struct prefix_ipv6 *prefix, u_int32_t lifetime);
 /* RFC4584 Extension to Sockets API for Mobile IPv6 */
 
 #ifndef ND_OPT_ADV_INTERVAL

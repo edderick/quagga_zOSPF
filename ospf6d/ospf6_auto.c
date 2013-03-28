@@ -9,6 +9,7 @@
 #include "if.h"
 
 #include "ospf6_top.h"
+#include "ospf6_zebra.h"
 #include "ospf6_interface.h"
 #include "ospf6_message.h"
 #include "ospf6_area.h"
@@ -1042,17 +1043,42 @@ find_ifp_for_pending_prefix (struct ospf6_assigned_prefix *assigned_prefix)
 static void
 use_pending_assignment_thread (struct thread *thread)
 {
+  struct ospf6_area *backbone_area;
   struct ospf6_assigned_prefix *assigned_prefix;
   struct ospf6_interface *ifp;
+  struct prefix_ipv6 zero_address;
+  struct list *assigned_prefix_list, *aggregated_prefix_list;
 
   assigned_prefix = (struct ospf6_assigned_prefix *) THREAD_ARG (thread);
 
   ifp = find_ifp_for_pending_prefix (assigned_prefix);
-
-  listnode_add (ifp->assigned_prefix_list, assigned_prefix);
+  
+  /* Finally */
   listnode_delete (ifp->pending_prefix_list, assigned_prefix);
 
-  originate_new_ac_lsa ();
+  /* OSPFv3 Autoconf only runs on the backbone */
+  backbone_area = ospf6_area_lookup (0, ospf6);
+
+  create_ac_lsdb_snapshot (backbone_area->lsdb, 
+      &assigned_prefix_list, &aggregated_prefix_list);
+
+  if (is_prefix_valid_network_wide (assigned_prefix, assigned_prefix_list))
+  {
+    listnode_add (ifp->assigned_prefix_list, assigned_prefix);
+
+    originate_new_ac_lsa ();
+
+    zero_address = assigned_prefix->prefix;
+    zero_address.prefixlen = 128;
+
+    zebra_ipv6_addr_add_send (zclient, ifp->interface->ifindex, &zero_address);
+    zebra_ipv6_nd_prefix (zclient, ifp->interface->ifindex, &assigned_prefix->prefix);
+    zebra_ipv6_nd_no_suppress_ra (zclient, ifp->interface->ifindex);
+  }
+  else 
+  {
+    ospf6_schedule_assign_prefixes ();
+  }
 }
 
 static struct ospf6_assigned_prefix * 
@@ -1203,8 +1229,6 @@ make_prefix_assignment (struct ospf6_aggregated_prefix *agp,
 
   prefix = check_non_volatile_storage (agp, ifp, in_use_prefixes); 
 
-  /*TODO check pending */
-
   if (prefix == NULL)
   {
     prefix = choose_first_unassigned_prefix (agp, in_use_prefixes);
@@ -1256,7 +1280,6 @@ handle_other_assigned (struct ospf6_assigned_prefix *existing_assigned_prefix,
     if (is_prefix_valid_locally (existing_assigned_prefix, ifp->area))
     {
       start_using_prefix (existing_assigned_prefix, ifp, aspl);
-      /* TODO: Cancel pending */
     }
    
     /* Silently ignore invalid assignments */
@@ -1373,12 +1396,20 @@ purge_assigned_prefix_from_interface (struct ospf6_interface *oi,
 {
   struct listnode *node, *nnode;
   struct ospf6_assigned_prefix *ap;
+  struct prefix_ipv6 zero_address;
 
   for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nnode, ap))
   {
     if (prefix_same(&ap->prefix, &assigned_prefix->prefix))
     {
       listnode_delete (oi->assigned_prefix_list, ap);
+    
+      zero_address = assigned_prefix->prefix;
+      zero_address.prefixlen = 128;
+
+      zebra_ipv6_addr_del_send (zclient, oi->interface->ifindex, &zero_address);
+      zebra_ipv6_nd_no_prefix (zclient, oi->interface->ifindex, &assigned_prefix->prefix);
+      zebra_ipv6_nd_no_suppress_ra (zclient, oi->interface->ifindex);
     }
   }
 }
@@ -1419,7 +1450,6 @@ assigned_prefix_deprication_thread (struct thread *thread)
 
   if (assigned_prefix->assigning_router_id == ospf6->router_id)
   {
-    //TODO: Send out RA - With time set to 0
     originate_new_ac_lsa ();
   }
   assigned_prefix->deprecation_thread = NULL;

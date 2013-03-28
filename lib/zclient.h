@@ -163,10 +163,15 @@ extern int zapi_ipv4_route (u_char, struct zclient *, struct prefix_ipv4 *,
 * Autoconf Extensions
 ************************/
 #ifdef HAVE_IPV6
+
+#define ZEBRA_DEFAULT_PREFIX_LIFETIME 172800
+#define ZEBRA_ZERO_PREFIX_LIFETIME    0
+
 extern int zebra_ipv6_addr_add_send (struct zclient *zclient, int ifindex, struct in6_addr *addr);
 extern int zebra_ipv6_addr_del_send (struct zclient *zclient, int ifindex, struct in6_addr *addr);
 extern int zebra_ipv6_nd_no_suppress_ra (struct zclient *zclient, int ifindex);
 extern int zebra_ipv6_nd_prefix (struct zclient *zclient, int ifindex, struct prefix_ipv6 *prefix);
+extern int zebra_ipv6_nd_no_prefix (struct zclient *zclient, int ifindex, struct prefix_ipv6 *prefix);
 #endif /* HAVE_IPV6 */
 /*** END Autoconf Extensions ***/
 
