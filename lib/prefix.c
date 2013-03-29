@@ -329,6 +329,30 @@ prefix_cmp (const struct prefix *p1, const struct prefix *p2)
   return 0;
 }
 
+int      
+prefix_contains (const struct prefix *container, const struct prefix *containee)
+{
+  int i;
+
+  if (container->prefixlen > containee->prefixlen)
+    return 0;
+  
+  if(container->family != containee->family)
+    return 0;
+
+  for (i = 0; i < container->prefixlen; i++) 
+  {
+    if (prefix_bit (&container->u.prefix, i) 
+        != prefix_bit (&containee->u.prefix, i))
+    {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+
 /*
  * Count the number of common bits in 2 prefixes. The prefix length is
  * ignored for this function; the whole prefix is compared. If the prefix

@@ -145,6 +145,8 @@ extern int prefix2str (const struct prefix *, char *, int);
 extern int prefix_match (const struct prefix *, const struct prefix *);
 extern int prefix_same (const struct prefix *, const struct prefix *);
 extern int prefix_cmp (const struct prefix *, const struct prefix *);
+extern int prefix_contains (const struct prefix *, const struct prefix *);
+
 extern int prefix_common_bits (const struct prefix *, const struct prefix *);
 extern void prefix_copy (struct prefix *dest, const struct prefix *src);
 extern void apply_mask (struct prefix *);
