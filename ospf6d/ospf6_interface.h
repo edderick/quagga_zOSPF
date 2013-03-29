@@ -165,7 +165,7 @@ extern int wait_timer (struct thread *);
 extern int backup_seen (struct thread *);
 extern int neighbor_change (struct thread *);
 
-extern void ospf6_associated_prefix_writer (struct thread *);
+extern int ospf6_associated_prefix_writer (struct thread *);
 
 extern void ospf6_interface_init (void);
 

@@ -422,7 +422,7 @@ zebra_ipv6_nd_no_suppress_ra (struct zclient *zclient, int ifindex)
 /* TODO: Do we need to specify other parameters? e.g. TTL, prefix length */
 /* Send a Zebra message to add a prefix to the Router Advertisment */
 int 
-zebra_ipv6_nd_prefix (struct zclient *zclient, int ifindex, struct prefix_ipv6 *prefix)
+zebra_ipv6_nd_prefix (struct zclient *zclient, int ifindex, struct prefix *prefix)
 {
   struct stream *s;
   int i;
@@ -439,7 +439,7 @@ zebra_ipv6_nd_prefix (struct zclient *zclient, int ifindex, struct prefix_ipv6 *
   stream_putc (s, prefix->family);
   stream_putc (s, prefix->prefixlen);
   for (i = 0; i < 16; i++){
-    stream_putc (s, prefix->prefix.s6_addr[i]);
+    stream_putc (s, prefix->u.prefix6.s6_addr[i]);
   }
   stream_putl (s, ZEBRA_DEFAULT_PREFIX_LIFETIME);
   
@@ -452,7 +452,7 @@ zebra_ipv6_nd_prefix (struct zclient *zclient, int ifindex, struct prefix_ipv6 *
 }
 
 int 
-zebra_ipv6_nd_no_prefix (struct zclient *zclient, int ifindex, struct prefix_ipv6 *prefix)
+zebra_ipv6_nd_no_prefix (struct zclient *zclient, int ifindex, struct prefix *prefix)
 {
   struct stream *s;
   int i;
@@ -469,7 +469,7 @@ zebra_ipv6_nd_no_prefix (struct zclient *zclient, int ifindex, struct prefix_ipv
   stream_putc (s, prefix->family);
   stream_putc (s, prefix->prefixlen);
   for (i = 0; i < 16; i++){
-    stream_putc (s, prefix->prefix.s6_addr[i]);
+    stream_putc (s, prefix->u.prefix6.s6_addr[i]);
   }
   stream_putl (s, ZEBRA_ZERO_PREFIX_LIFETIME);
 

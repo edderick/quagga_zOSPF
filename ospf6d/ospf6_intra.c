@@ -747,7 +747,7 @@ ospf6_ac_lsa_originate (struct thread *thread)
 
       /* Send prefix */ 
       ac_tlv_ag_p->prefix_length = aggregated_prefix->prefix.prefixlen;
-      ac_tlv_ag_p->prefix = aggregated_prefix->prefix.prefix;
+      ac_tlv_ag_p->prefix = aggregated_prefix->prefix.u.prefix6;
 
       current_tlv = ++ac_tlv_ag_p;
     }
@@ -768,7 +768,7 @@ ospf6_ac_lsa_originate (struct thread *thread)
 
 	/* Send prefix */ 
 	ac_tlv_as_p->prefix_length = assigned_prefix->prefix.prefixlen;
-	ac_tlv_as_p->prefix = assigned_prefix->prefix.prefix;
+	ac_tlv_as_p->prefix = assigned_prefix->prefix.u.prefix6;
 	ac_tlv_as_p->interface_id = ifp->interface->ifindex;
 
 	current_tlv = ++ac_tlv_as_p;

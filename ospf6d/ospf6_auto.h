@@ -4,7 +4,7 @@
 /* Prefix that has been given to OSPF6d to distribute */
 struct ospf6_aggregated_prefix 
 {
-  struct prefix_ipv6 prefix;
+  struct prefix prefix;
   int source;
   u_int32_t advertising_router_id; 
 };
@@ -27,18 +27,22 @@ struct ospf6_aggregated_prefix
 /* Prefix that has been assigned to a link by some router */
 struct ospf6_assigned_prefix 
 {
-  struct prefix_ipv6 prefix;
+  struct prefix prefix;
   u_int32_t assigning_router_id;
   u_int32_t assigning_router_if_id;
   u_int8_t is_valid;
+
+  struct ospf6_interface *interface;
 
   struct thread *pending_thread;
   struct thread *deprecation_thread;
 };
 
-u_int32_t ospf6_generate_router_id ();
-u_int32_t ospf6_router_hardware_fingerprint (); 
-void ospf6_init_seed ();
+void ospf6_auto_init (void); 
+
+u_int32_t ospf6_generate_router_id (void);
+u_int32_t ospf6_router_hardware_fingerprint (void); 
+void ospf6_init_seed (void);
 
 void ospf6_set_router_id (u_int32_t rid);
 
@@ -49,7 +53,7 @@ void ospf6_assign_prefixes (void);
 void ospf6_schedule_assign_prefixes (void);
 
 void ospf6_write_associated_prefixes_to_file (struct ospf6_interface *ifp);
-void ospf6_read_asociated_prefixes_from_file (void);
+void ospf6_read_associated_prefixes_from_file (struct ospf6_interface *ifp);
 
 #define R_HW_FP_BYTELEN 4
 #define R_HW_FP_CMP(D,S)   memcmp ((D), (S), R_HW_FP_BYTELEN)

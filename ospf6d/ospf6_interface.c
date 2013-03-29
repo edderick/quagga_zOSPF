@@ -745,10 +745,11 @@ interface_down (struct thread *thread)
   return 0;
 }
 
-void
+int
 ospf6_associated_prefix_writer (struct thread *thread)
 {
-        ospf6_write_associated_prefixes_to_file ((struct ospf6_interface *) THREAD_ARG (thread));
+  ospf6_write_associated_prefixes_to_file ((struct ospf6_interface *) THREAD_ARG (thread));
+  return 0;
 }
 
 
