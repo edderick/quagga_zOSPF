@@ -22,7 +22,7 @@ struct ospf6_aggregated_prefix
 #define OSPF6_NEW_ULA_PREFIX_SECONDS		    20
 #define OSPF6_TERMINATE_ULA_PREFIX_SECONDS	    120 
 #define OSPF6_NEW_PREFIX_ASSIGNMENT_SECONDS	    20 
-#define OSPF6_TERMINATE_PREFIX_ASSIGNMENT_SECONDS   60 
+#define OSPF6_TERMINATE_PREFIX_ASSIGNMENT_SECONDS   240 
 
 /* Prefix that has been assigned to a link by some router */
 struct ospf6_assigned_prefix 
