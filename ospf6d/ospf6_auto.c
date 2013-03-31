@@ -280,7 +280,6 @@ ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header)
 	  return 0;
 	}
 
-	zlog_warn("Changing Router-ID");
 	ospf6_set_router_id (ospf6_generate_router_id ());
 
 	return 1;
@@ -1081,7 +1080,6 @@ static void
 schedule_using_assigned_prefix (struct ospf6_assigned_prefix *assigned_prefix,
 				struct ospf6_interface *ifp)
 {
-  zlog_warn("scheduling");
   add_to_associated_prefixes (assigned_prefix, ifp);
   listnode_add (ifp->pending_prefix_list, assigned_prefix); 
   listnode_add (ifp->assigned_prefix_list, assigned_prefix);
@@ -1170,7 +1168,6 @@ stop_using_prefix (struct ospf6_assigned_prefix *assigned_prefix,
   pending_prefix = find_pending_assignment (assigned_prefix, ifp);
   if (pending_prefix != NULL)
   {
-    zlog_warn ("Pender"); 
     THREAD_OFF (pending_prefix->pending_thread);
     listnode_delete (ifp->pending_prefix_list, pending_prefix);
     listnode_delete (ifp->assigned_prefix_list, pending_prefix);
@@ -1253,12 +1250,10 @@ handle_self_assigned (struct ospf6_assigned_prefix *existing_assigned_prefix,
 {
   if (is_prefix_valid_network_wide (existing_assigned_prefix, aspl))
   {
-    zlog_warn ("continuing");
     continue_using_prefix (existing_assigned_prefix, ifp, aspl);
   }
   else 
   {
-    zlog_warn ("self deletion");
     stop_using_prefix (existing_assigned_prefix, ifp, aspl);
   }
 }
@@ -1325,22 +1320,18 @@ process_prefix_interface_pair (struct ospf6_aggregated_prefix *agp,
   
   if (has_highest_assignment)
   {
-    zlog_warn ("SELF");
     handle_self_assigned (highest_assigned_prefix, ifp, aspl);
   }
   else if (highest_assigned_prefix != NULL)
   {
-    zlog_warn ("OTHER");
     handle_other_assigned (highest_assigned_prefix, ifp, aspl);
   }
   else if (has_highest_rid) 
   {
-    zlog_warn ("MY JOB");
     handle_self_not_assigned (agp, ifp, aspl);
   }
   else 
   {
-    zlog_warn ("THEIR JOB");
     handle_other_not_assigned (agp, ifp, aspl);
   }
 
@@ -1395,8 +1386,6 @@ assigned_prefix_deprication_thread (struct thread *thread)
   struct ospf6_assigned_prefix *assigned_prefix;
   struct ospf6_interface *ifp;
 
-  zlog_warn ("deprecating");
-
   assigned_prefix = (struct ospf6_assigned_prefix *) THREAD_ARG (thread);
 
   ifp = assigned_prefix->interface;
@@ -1445,7 +1434,6 @@ delete_invalid_assigned_prefixes_on_interface (struct ospf6_interface *oi)
       
       if (pending_prefix != NULL)
       {
-	zlog_warn("caught a pender");
 	THREAD_OFF (pending_prefix->pending_thread);
 	listnode_delete (oi->pending_prefix_list, pending_prefix);
 	listnode_delete (oi->assigned_prefix_list, pending_prefix);
