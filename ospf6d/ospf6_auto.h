@@ -22,7 +22,7 @@ struct ospf6_aggregated_prefix
 #define OSPF6_NEW_ULA_PREFIX_SECONDS		    20
 #define OSPF6_TERMINATE_ULA_PREFIX_SECONDS	    120 
 #define OSPF6_NEW_PREFIX_ASSIGNMENT_SECONDS	    20 
-#define OSPF6_TERMINATE_PREFIX_ASSIGNMENT_SECONDS   240 
+#define OSPF6_TERMINATE_PREFIX_ASSIGNMENT_SECONDS   60 
 
 /* Prefix that has been assigned to a link by some router */
 struct ospf6_assigned_prefix 
@@ -49,7 +49,6 @@ void ospf6_set_router_id (u_int32_t rid);
 void ospf6_check_router_id (struct ospf6_header *oh, struct in6_addr src, struct in6_addr dst);
 int ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header); 
 
-void ospf6_assign_prefixes (void); 
 void ospf6_schedule_assign_prefixes (void);
 
 void ospf6_write_associated_prefixes_to_file (struct ospf6_interface *ifp);
