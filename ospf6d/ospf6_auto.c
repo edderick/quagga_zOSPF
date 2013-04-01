@@ -592,12 +592,14 @@ handle_assigned_prefix_tlv (char *current, struct ospf6_lsa *current_lsa)
 static void
 create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb, 
 			 struct list **assigned_prefix_list, 
-			 struct list **aggregated_prefix_list)
+			 struct list **aggregated_prefix_list,
+			 struct list **reachable_rid_list)
 {
   struct ospf6_lsa *current_lsa;
  
   *assigned_prefix_list = list_new ();
   *aggregated_prefix_list = list_new ();
+  *reachable_rid_list = list_new ();
 
   current_lsa = ospf6_lsdb_type_head (htons (OSPF6_LSTYPE_AC), lsdb);
 
@@ -605,6 +607,7 @@ create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb,
   {
     struct ospf6_ac_lsa * ac_lsa;
     char *start, *end, *current;
+    u_int32_t *rid;
     
     if (!current_lsa->reachable) 
     {
@@ -615,6 +618,10 @@ create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb,
     /* Process LSA */
     ac_lsa = (struct ospf6_ac_lsa *)
         ((char *) current_lsa->header + sizeof (struct ospf6_lsa_header));
+
+    rid = malloc (sizeof (u_int32_t));
+    *rid = current_lsa->header->adv_router;
+    listnode_add (*reachable_rid_list, rid);
 
     /* Start and end of all TLVs */
     start = (char *) ac_lsa + sizeof (struct ospf6_ac_lsa);
@@ -1011,7 +1018,7 @@ use_pending_assignment_thread (struct thread *thread)
   struct ospf6_area *backbone_area;
   struct ospf6_assigned_prefix *assigned_prefix;
   struct ospf6_interface *ifp;
-  struct list *assigned_prefix_list, *aggregated_prefix_list;
+  struct list *assigned_prefix_list, *aggregated_prefix_list, *rid_list;
 
   assigned_prefix = (struct ospf6_assigned_prefix *) THREAD_ARG (thread);
 
@@ -1024,7 +1031,7 @@ use_pending_assignment_thread (struct thread *thread)
   backbone_area = ospf6_area_lookup (0, ospf6);
 
   create_ac_lsdb_snapshot (backbone_area->lsdb, 
-      &assigned_prefix_list, &aggregated_prefix_list);
+      &assigned_prefix_list, &aggregated_prefix_list, &rid_list);
 
   if (is_prefix_valid_network_wide (assigned_prefix, assigned_prefix_list))
   {
@@ -1466,10 +1473,45 @@ delete_invalid_assigned_prefixes_in_area (struct ospf6_area *oa)
 }
 
 static void 
+check_for_ula_generation (struct list *aggregated_prefix_list, 
+			  struct list *reachable_rid_list)
+{
+  struct listnode *node, *nnode;
+  u_int32_t *rid, highest_rid;
+  struct ospf6_aggregated_prefix *agp;
+  
+  highest_rid = 0;
+
+  for (ALL_LIST_ELEMENTS (reachable_rid_list, node, nnode, rid))
+  {
+    zlog_warn ("router : %d", *rid);
+    if (*rid > highest_rid) highest_rid = *rid;
+  }
+      
+  zlog_warn ("Check if we created a ULA");
+  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nnode, agp))
+  {
+    if (agp->source == OSPF6_PREFIX_SOURCE_GENERATED)
+    {
+      zlog_warn ("Found one, ensure it's valid");
+      /* If aggregated_prefix_list->count > 1 and the RID is not the highest? */
+    }
+  }
+  
+  if (highest_rid == ospf6->router_id)
+  {
+    if (aggregated_prefix_list->count == 0)
+    {
+      zlog_warn ("Needs a ULA");
+    }
+  }
+}
+
+static void 
 ospf6_assign_prefixes (void)
 {
   struct ospf6_area *backbone_area;
-  struct list *assigned_prefix_list, *aggregated_prefix_list;
+  struct list *assigned_prefix_list, *aggregated_prefix_list, *reachable_rid_list;
   
   zlog_warn ("Running assignment algorithm");
 
@@ -1479,8 +1521,12 @@ ospf6_assign_prefixes (void)
   mark_area_prefixes_invalid (backbone_area);
 
   create_ac_lsdb_snapshot (backbone_area->lsdb, 
-      &assigned_prefix_list, &aggregated_prefix_list);
-  
+			   &assigned_prefix_list, 
+			   &aggregated_prefix_list,
+			   &reachable_rid_list);
+ 
+  check_for_ula_generation (aggregated_prefix_list, reachable_rid_list);
+
   process_prefix_interface_pairs (backbone_area, 
       aggregated_prefix_list, assigned_prefix_list);
   
