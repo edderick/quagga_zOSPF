@@ -1270,6 +1270,7 @@ handle_self_assigned (struct ospf6_assigned_prefix *existing_assigned_prefix,
   }
   else 
   {
+ 
     stop_using_prefix (existing_assigned_prefix, ifp, aspl);
   }
 }
@@ -1567,20 +1568,22 @@ read_ula (void)
   if (file_pointer != NULL)
   {
     /*XXX: Portability? */
-    fgets ((char * restrict) linebuf, 100, file_pointer);
-    fclose (file_pointer); 
+    fgets ((char * restrict) linebuf, 64, file_pointer);
    
     addr = malloc (sizeof (struct in6_addr));
-    memset (addr, 0, sizeof (struct in6_addr));
   
-    prefix = malloc (sizeof (struct prefix));
+    prefix = prefix_new ();
 
     str2prefix (linebuf, prefix);
-    memcpy (addr, &prefix->u.prefix6, 128);
+    memcpy (&addr->s6_addr[0], &prefix->u.prefix6, sizeof (struct in6_addr));
 
     prefix_free (prefix);
-
+    fclose (file_pointer); 
     return addr;
+  }
+  else 
+  {
+    zlog_warn ("Failed to open file");
   }
 
   return NULL; 
@@ -1601,7 +1604,6 @@ write_ula (struct in6_addr *addr)
   {
     in6_addr2str (*addr, 0, buf, 64);
     fprintf (file_pointer, "%s", buf);
-  
     fclose (file_pointer);  
   }
   else
@@ -1615,8 +1617,6 @@ ula_generator (struct thread *thread)
 {
   struct ospf6_aggregated_prefix *new_ula_prefix;
   struct in6_addr *addr;
-
-  ospf6->ula_generation_thread = NULL;
 
   addr = NULL;
   addr = read_ula ();
@@ -1638,6 +1638,8 @@ ula_generator (struct thread *thread)
 
   listnode_add (ospf6->aggregated_prefix_list, new_ula_prefix);
   originate_new_ac_lsa ();
+
+  ospf6->ula_generation_thread = NULL;
 }
 
 static int ula_terminator (struct thread *thread)
@@ -1765,13 +1767,13 @@ ospf6_assign_prefixes (void)
 			   &assigned_prefix_list, 
 			   &aggregated_prefix_list,
 			   &reachable_rid_list);
- 
+
   check_for_ula_generation (aggregated_prefix_list, reachable_rid_list);
 
   process_prefix_interface_pairs (backbone_area, 
       aggregated_prefix_list, assigned_prefix_list);
   
-   delete_invalid_assigned_prefixes_in_area (backbone_area); 
+  delete_invalid_assigned_prefixes_in_area (backbone_area); 
 
   /* Tidy up */
   /* Keep hold of aggregated prefix list */
