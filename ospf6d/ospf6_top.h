@@ -68,6 +68,9 @@ struct ospf6
 
   struct thread *maxage_remover;
   struct thread *assign_prefix_thread;
+ 
+  struct thread *ula_generation_thread;
+  struct thread *ula_termination_thread;
 };
 
 #define OSPF6_DISABLED    0x01

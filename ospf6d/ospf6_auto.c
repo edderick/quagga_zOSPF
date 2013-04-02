@@ -7,6 +7,7 @@
 #include "prefix.h"
 #include "command.h"
 #include "if.h"
+#include "md5.h"
 
 #include "ospf6_top.h"
 #include "ospf6_zebra.h"
@@ -29,20 +30,28 @@ static void create_ospf6_interface (char * name);
 
 /* Convert a transmission order MAC address to storage order */
 static u_int64_t
-hw_addr_to_long (u_char *hw_addr, int hw_addr_len)
+hw_addr_to_long (const u_char *hw_addr, const int hw_addr_len)
 {
-  u_int64_t total;
-  int i;
+  u_int8_t *result;
 
-  total = 0;
+  result = malloc (8);
 
-  for (i = hw_addr_len - 1; i >= 0; i--)
+  if (hw_addr_len != 8)
   {
-    total *= 256;
-    total += hw_addr[i];
+    memcpy (result, hw_addr, 4);
+    result[4] = 0xFF;
+    result[5] = 0xFE;
+    memcpy (result + 6, hw_addr, 4);
+  
+    /* flip EUI 64 bit; */
+    result[0] = result[0] ^ 0x20;
+  }
+  else
+  {
+    memcpy (result, hw_addr, 8);
   }
 
-  return total;
+  return *result;
 }
 
 /* Can be replaced with a more sophisticated hash if needed */
@@ -1472,38 +1481,203 @@ delete_invalid_assigned_prefixes_in_area (struct ospf6_area *oa)
   }
 }
 
+static u_int8_t *
+md5sum (const void * data, u_int32_t length)
+{
+  md5_ctxt context;
+  u_int8_t *result;
+
+  result = malloc (16);
+
+  md5_init (&context);
+  md5_loop (&context, data, length);
+  md5_pad (&context);
+  md5_result (result, &context);
+
+  return result; 
+}
+
+static u_int64_t
+get_ntp_time (void)
+{
+  const u_int64_t DELTA = 2208988800ULL;
+  const u_int64_t NTP_SCALE_FRAC = 4294967295ULL;
+  struct timeval time_of_day;
+  u_int64_t tv_ntp, tv_usecs;
+
+  quagga_gettime (QUAGGA_CLK_REALTIME, &time_of_day);
+
+  tv_ntp = time_of_day.tv_sec + DELTA;
+  tv_usecs = (NTP_SCALE_FRAC * time_of_day.tv_usec) / 1000000UL;
+ 
+  return (tv_ntp << 32) | tv_usecs; 
+}
+
+static u_int64_t 
+get_first_hw_addr (void)
+{
+  struct ospf6_interface *oi;
+  struct ospf6_area *backbone_area;
+
+  backbone_area = ospf6_area_lookup (0, ospf6);
+ 
+  oi = listhead (backbone_area->if_list);
+
+  return hw_addr_to_long (&oi->interface->hw_addr, oi->interface->hw_addr_len);
+}
+
+static struct in6_addr 
+generate_random_prefix (void)
+{
+  struct in6_addr prefix;
+  u_int8_t *result;
+  u_int64_t time;
+  u_int64_t hw_addr;
+
+  u_int64_t key[2];
+
+  time = get_ntp_time ();
+  hw_addr = get_first_hw_addr ();
+
+  key[0] = time;
+  key[1] = hw_addr;
+
+  result = md5sum (key, sizeof (key));
+  
+  memset (&prefix.s6_addr[0], 0xFC, 1);
+  memcpy (&prefix.s6_addr[1], result, 5);
+  memset (&prefix.s6_addr[6], 0, 10);
+
+  return prefix;
+}
+
+static int
+ula_generator (struct thread *thread)
+{
+  ospf6->ula_generation_thread = NULL;
+
+  /* TODO: Check non-volatile storage */
+
+  struct ospf6_aggregated_prefix *new_ula_prefix;
+
+  new_ula_prefix = malloc (sizeof (struct ospf6_aggregated_prefix));
+
+  new_ula_prefix->source = OSPF6_PREFIX_SOURCE_GENERATED;
+  new_ula_prefix->advertising_router_id = ospf6->router_id;
+
+  new_ula_prefix->prefix.family = AF_INET6;
+  new_ula_prefix->prefix.prefixlen = 48;
+  new_ula_prefix->prefix.u.prefix6 = generate_random_prefix ();
+
+  listnode_add (ospf6->aggregated_prefix_list, new_ula_prefix);
+  originate_new_ac_lsa ();
+}
+
+static int ula_terminator (struct thread *thread)
+{
+  struct listnode *node, *nnode;
+  struct ospf6_aggregated_prefix *agp;
+  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nnode, agp))
+  {
+    if (agp->source == OSPF6_PREFIX_SOURCE_GENERATED)
+    {
+      listnode_delete (ospf6->aggregated_prefix_list, agp);
+      originate_new_ac_lsa ();
+    }
+  }
+}
+
+static void
+schedule_ula_generation (void)
+{
+  if (ospf6->ula_generation_thread == NULL)
+  {
+    ospf6->ula_generation_thread = 
+      thread_add_timer (master, ula_generator, 
+			  NULL, OSPF6_NEW_ULA_PREFIX_SECONDS);
+  }
+}
+
+static void 
+schedule_ula_termination (void)
+{
+  if (ospf6->ula_termination_thread == NULL)
+  {
+    ospf6->ula_termination_thread = 
+      thread_add_timer (master, ula_terminator,
+			  NULL, OSPF6_TERMINATE_ULA_PREFIX_SECONDS);
+  }
+}
+
+static void 
+cancel_ula_generation (void)
+{
+  THREAD_OFF (ospf6->ula_generation_thread);
+}
+
+static void 
+cancel_ula_termination (void)
+{
+  THREAD_OFF (ospf6->ula_termination_thread);
+}
+
 static void 
 check_for_ula_generation (struct list *aggregated_prefix_list, 
 			  struct list *reachable_rid_list)
 {
   struct listnode *node, *nnode;
-  u_int32_t *rid, highest_rid;
+  u_int32_t *rid, highest_rid, highest_advertiser;
   struct ospf6_aggregated_prefix *agp;
+  u_int8_t exists_non_generated;
   
   highest_rid = 0;
-
   for (ALL_LIST_ELEMENTS (reachable_rid_list, node, nnode, rid))
   {
-    zlog_warn ("router : %d", *rid);
     if (*rid > highest_rid) highest_rid = *rid;
   }
       
-  zlog_warn ("Check if we created a ULA");
-  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nnode, agp))
+  exists_non_generated = 0;
+  highest_advertiser = 0;
+  for (ALL_LIST_ELEMENTS (aggregated_prefix_list, node, nnode, agp))
   {
-    if (agp->source == OSPF6_PREFIX_SOURCE_GENERATED)
+    if (agp->source != OSPF6_PREFIX_SOURCE_GENERATED)
     {
-      zlog_warn ("Found one, ensure it's valid");
-      /* If aggregated_prefix_list->count > 1 and the RID is not the highest? */
+      exists_non_generated = 1;
+    }
+    else 
+    {
+      if (agp->advertising_router_id > highest_advertiser)
+      {
+	highest_advertiser = agp->advertising_router_id;
+      }
     }
   }
-  
-  if (highest_rid == ospf6->router_id)
+ 
+  for (ALL_LIST_ELEMENTS (aggregated_prefix_list, node, nnode, agp))
   {
-    if (aggregated_prefix_list->count == 0)
+    if ((agp->advertising_router_id == ospf6->router_id) 
+	&& (agp->source == OSPF6_PREFIX_SOURCE_GENERATED))
     {
-      zlog_warn ("Needs a ULA");
+      if ((ospf6->router_id != highest_advertiser)
+	  || exists_non_generated )
+      {
+	schedule_ula_termination ();	
+      }
+      else 
+      {
+	cancel_ula_termination ();
+      }
     }
+  }
+
+  if ((highest_rid == ospf6->router_id) 
+      && (aggregated_prefix_list->count == 0))
+  {
+    schedule_ula_generation ();
+  }
+  else
+  {
+    cancel_ula_generation ();
   }
 }
 
