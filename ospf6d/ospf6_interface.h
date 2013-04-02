@@ -137,6 +137,7 @@ extern const char *ospf6_interface_state_str[];
 /* default values */
 #define OSPF6_INTERFACE_HELLO_INTERVAL 10
 #define OSPF6_INTERFACE_DEAD_INTERVAL  40
+#define OSPF6_INTERFACE_AUTO_WAIT_INTERVAL 11
 #define OSPF6_INTERFACE_RXMT_INTERVAL  5
 #define OSPF6_INTERFACE_COST           1
 #define OSPF6_INTERFACE_PRIORITY       1

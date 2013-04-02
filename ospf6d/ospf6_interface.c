@@ -655,7 +655,8 @@ interface_up (struct thread *thread)
   else
     {
       ospf6_interface_state_change (OSPF6_INTERFACE_WAITING, oi);
-      thread_add_timer (master, wait_timer, oi, oi->dead_interval);
+      if (auto_conf) thread_add_timer (master, wait_timer, oi, OSPF6_INTERFACE_AUTO_WAIT_INTERVAL);
+      else thread_add_timer (master, wait_timer, oi, oi->dead_interval);
     }
 
   return 0;

@@ -144,6 +144,9 @@ ospf6_create (void)
 
   o->external_id_table = route_table_init ();
 
+  o->ula_generation_thread = NULL;
+  o->ula_termination_thread = NULL;
+
   return o;
 }
 
