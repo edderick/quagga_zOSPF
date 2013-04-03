@@ -306,7 +306,8 @@ ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header)
 }
 
 /* Begin originating an updated ac_lsa */
-static void originate_new_ac_lsa (void) 
+static void 
+originate_new_ac_lsa (void) 
 {
     struct ospf6_area *backbone_area;
     backbone_area = ospf6_area_lookup (0, ospf6);
@@ -1033,7 +1034,6 @@ use_pending_assignment_thread (struct thread *thread)
 
   ifp = assigned_prefix->interface;
 
-  /* Finally */
   listnode_delete (ifp->pending_prefix_list, assigned_prefix);
 
   /* OSPFv3 Autoconf only runs on the backbone */
@@ -1750,6 +1750,38 @@ check_for_ula_generation (struct list *aggregated_prefix_list,
   }
 }
 
+static u_int8_t
+router_has_reachable_ac_lsa (struct ospf6_neighbor *neighbor, struct list *reachable_rid_list)
+{
+  struct listnode *node, *nnode;
+  u_int32_t *rid;
+
+  for (ALL_LIST_ELEMENTS (reachable_rid_list, node, nnode, rid))
+  {
+    if (neighbor->router_id == *rid) return 1;
+  }
+  return 0;
+}
+
+static u_int8_t 
+detect_inactive_neighbors (struct ospf6_area *oa, struct list * reachable_rid_list)
+{
+  struct listnode *node, *nnode;
+  struct ospf6_interface *oi;
+
+  for (ALL_LIST_ELEMENTS (oa->if_list, node, nnode, oi))
+  {
+    struct listnode *inner_node, *inner_nnode;
+    struct ospf6_neighbor *neighbor;
+    for (ALL_LIST_ELEMENTS (oi->neighbor_list, node, nnode, neighbor))
+    {
+      if (!router_has_reachable_ac_lsa (neighbor, reachable_rid_list)) return 1;
+    }
+  }
+
+  return 0;
+}
+
 static void 
 ospf6_assign_prefixes (void)
 {
@@ -1761,12 +1793,21 @@ ospf6_assign_prefixes (void)
   /* OSPFv3 Autoconf only runs on the backbone */
   backbone_area = ospf6_area_lookup (0, ospf6);
 
-  mark_area_prefixes_invalid (backbone_area);
 
   create_ac_lsdb_snapshot (backbone_area->lsdb, 
 			   &assigned_prefix_list, 
 			   &aggregated_prefix_list,
 			   &reachable_rid_list);
+
+  if (detect_inactive_neighbors (backbone_area, reachable_rid_list))
+  {
+    zlog_warn ("Abort!");
+    cancel_ula_generation ();
+    /* TODO: Maybe cancel other things too */
+    return;
+  }
+
+  mark_area_prefixes_invalid (backbone_area);
 
   check_for_ula_generation (aggregated_prefix_list, reachable_rid_list);
 
