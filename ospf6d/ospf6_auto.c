@@ -27,6 +27,7 @@
 
 /* Proto */
 static void create_ospf6_interface (char * name);
+static void ospf6_read_associated_prefixes_from_file (struct ospf6_interface *ifp);
 
 /* Convert a transmission order MAC address to storage order */
 static u_int64_t
@@ -897,7 +898,7 @@ choose_first_unassigned_prefix (struct ospf6_aggregated_prefix *agp,
   return NULL;
 }
 
-void 
+static void 
 ospf6_write_associated_prefixes_to_file (struct ospf6_interface *ifp)
 {
   struct listnode *node, *nnode;
@@ -921,7 +922,7 @@ ospf6_write_associated_prefixes_to_file (struct ospf6_interface *ifp)
   }
 }
 
-void 
+static void 
 ospf6_read_associated_prefixes_from_file (struct ospf6_interface *ifp)
 {
   FILE *file_pointer;
@@ -950,6 +951,18 @@ ospf6_read_associated_prefixes_from_file (struct ospf6_interface *ifp)
     }
     fclose (file_pointer);
   }
+}
+
+static int
+ospf6_associated_prefix_writer (struct thread *thread)
+{
+  struct ospf6_interface *oi;
+  oi = (struct ospf6_interface *) THREAD_ARG (thread);
+
+  ospf6_write_associated_prefixes_to_file (oi);
+
+  oi->associated_prefixes_writer = NULL;
+  return 0;
 }
 
 static void 
@@ -1293,7 +1306,6 @@ static void
 handle_self_not_assigned (struct ospf6_aggregated_prefix *current_aggregate_prefix, 
 		       struct ospf6_interface *ifp, struct list *aspl)
 {
-    /* Make assignment from this aggregated prefix */
     make_prefix_assignment (current_aggregate_prefix, ifp, aspl);
 }
 
@@ -1395,7 +1407,6 @@ process_prefix_interface_pairs (struct ospf6_area *oa,
     }
   }
 }
-
 
 static int
 assigned_prefix_deprication_thread (struct thread *thread)
@@ -1788,11 +1799,8 @@ ospf6_assign_prefixes (void)
   struct ospf6_area *backbone_area;
   struct list *assigned_prefix_list, *aggregated_prefix_list, *reachable_rid_list;
   
-  zlog_warn ("Running assignment algorithm");
-
   /* OSPFv3 Autoconf only runs on the backbone */
   backbone_area = ospf6_area_lookup (0, ospf6);
-
 
   create_ac_lsdb_snapshot (backbone_area->lsdb, 
 			   &assigned_prefix_list, 
@@ -1801,7 +1809,6 @@ ospf6_assign_prefixes (void)
 
   if (detect_inactive_neighbors (backbone_area, reachable_rid_list))
   {
-    zlog_warn ("Abort!");
     cancel_ula_generation ();
     /* TODO: Maybe cancel other things too */
     return;
