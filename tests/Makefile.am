@@ -6,7 +6,7 @@ AM_LDFLAGS = $(PILDFLAGS)
 
 noinst_PROGRAMS = testsig testbuffer testmemory heavy heavywq heavythread \
 		aspathtest testprivs teststream testbgpcap ecommtest \
-		testbgpmpattr testchecksum testbgpmpath tabletest
+		testbgpmpattr testchecksum testbgpmpath tabletest testospf6dautoconf
 
 testsig_SOURCES = test-sig.c
 testbuffer_SOURCES = test-buffer.c
@@ -23,6 +23,7 @@ testbgpmpattr_SOURCES =  bgp_mp_attr_test.c
 testchecksum_SOURCES = test-checksum.c
 testbgpmpath_SOURCES = bgp_mpath_test.c
 tabletest_SOURCES = table_test.c
+testospf6dautoconf_SOURCES = ospf6d_autoconf_test.c
 
 testsig_LDADD = ../lib/libzebra.la @LIBCAP@
 testbuffer_LDADD = ../lib/libzebra.la @LIBCAP@
@@ -39,3 +40,4 @@ testbgpmpattr_LDADD = ../bgpd/libbgp.a ../lib/libzebra.la @LIBCAP@ -lm
 testchecksum_LDADD = ../lib/libzebra.la @LIBCAP@ 
 testbgpmpath_LDADD = ../bgpd/libbgp.a ../lib/libzebra.la @LIBCAP@ -lm
 tabletest_LDADD = ../lib/libzebra.la @LIBCAP@ -lm
+testospf6dautoconf_LDADD = ../ospf6d/libospf6.a ../lib/libzebra.la @LIBCAP@ -lm
