@@ -68,10 +68,35 @@ struct zebra_privs_t ospf6d_privs =
   .cap_num_i = 0
 };
 
+static void 
+setup (void)
+{
+  struct ospf6_area *backbone_area;
+
+  master = malloc ( sizeof (struct thread));
+
+  ospf6 = malloc ( sizeof (struct ospf6));
+  
+  ospf6->area_list = list_new();
+  ospf6->aggregated_prefix_list = list_new ();
+
+  backbone_area = malloc (sizeof (struct ospf6_area));
+  backbone_area->area_id = 0;
+
+  backbone_area->lsdb = malloc (sizeof (struct ospf6_lsdb));
+  backbone_area->lsdb_self = malloc (sizeof (struct ospf6_lsdb));
+
+  backbone_area->lsdb->table = malloc (sizeof (struct route_table));
+  backbone_area->lsdb->table->top = malloc (sizeof (struct route_node));
+
+  listnode_add (ospf6->area_list, backbone_area);
+}
 
 int 
 main (int argc, int **argv)
 {
+  setup();  
+
   ospf6_assign_prefixes ();
   
   printf (OK "\n");
