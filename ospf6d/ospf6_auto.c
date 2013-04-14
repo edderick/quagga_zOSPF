@@ -1824,7 +1824,7 @@ detect_inactive_neighbors (struct ospf6_area *oa, struct list * reachable_rid_li
   return 0;
 }
 
-static void 
+void 
 ospf6_assign_prefixes (void)
 {
   struct ospf6_area *backbone_area;

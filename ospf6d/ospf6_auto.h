@@ -56,4 +56,7 @@ int ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header);
 
 void ospf6_schedule_assign_prefixes (void);
 
+/* Mainly public to allow unit tests */
+void ospf6_assign_prefixes (void);
+
 #endif /* OSPF6_AUTO_H */
