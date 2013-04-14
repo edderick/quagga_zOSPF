@@ -472,7 +472,9 @@ DEFUN (show_ipv6_assigned_prefix,
 
   ifname = argv[0];
   ifp = if_lookup_by_name (ifname);
-  
+ 
+  assert (ifp);
+
   if (ifp == NULL){
     vty_out (vty, "No interface %s%s", ifname, VTY_NEWLINE);
     /*TODO: return CMD_FAILURE; */
@@ -959,6 +961,8 @@ ospf6_associated_prefix_writer (struct thread *thread)
   struct ospf6_interface *oi;
   oi = (struct ospf6_interface *) THREAD_ARG (thread);
 
+  assert (oi);
+
   ospf6_write_associated_prefixes_to_file (oi);
 
   oi->associated_prefixes_writer = NULL;
@@ -1044,6 +1048,8 @@ use_pending_assignment_thread (struct thread *thread)
   struct list *assigned_prefix_list, *aggregated_prefix_list, *rid_list;
 
   assigned_prefix = (struct ospf6_assigned_prefix *) THREAD_ARG (thread);
+
+  assert (assigned_prefix && assigned_prefix->interface);
 
   ifp = assigned_prefix->interface;
 
@@ -1324,6 +1330,8 @@ process_prefix_interface_pair (struct ospf6_aggregated_prefix *agp,
   u_int8_t has_highest_rid, has_highest_assignment;
   struct ospf6_assigned_prefix *highest_assigned_prefix;
 
+  assert (agp && ifp);
+
   active_neigbor_list = generate_active_neighbor_list (ifp->neighbor_list);
 
   has_highest_rid = is_highest_rid (active_neigbor_list);
@@ -1372,7 +1380,9 @@ exists_containing_prefix (struct ospf6_aggregated_prefix *aggregated_prefix,
 {
   struct listnode *node, *nnode;
   struct ospf6_aggregated_prefix *current_prefix; 
-  
+
+  assert (aggregated_prefix);
+
   for (ALL_LIST_ELEMENTS (aggregated_prefix_list, node, nnode, current_prefix))
   {
     if (prefix_contains (&current_prefix->prefix, &aggregated_prefix->prefix) 
@@ -1392,6 +1402,8 @@ process_prefix_interface_pairs (struct ospf6_area *oa,
 {
   struct listnode *node, *nnode;
   struct ospf6_aggregated_prefix *ag_prefix;
+
+  assert (oa);
 
   for (ALL_LIST_ELEMENTS (aggregated_prefix_list, node, nnode, ag_prefix)) 
   {
@@ -1415,6 +1427,8 @@ assigned_prefix_deprication_thread (struct thread *thread)
   struct ospf6_interface *ifp;
 
   assigned_prefix = (struct ospf6_assigned_prefix *) THREAD_ARG (thread);
+
+  assert (assigned_prefix && assigned_prefix->interface);
 
   ifp = assigned_prefix->interface;
 
@@ -1453,6 +1467,8 @@ delete_invalid_assigned_prefixes_on_interface (struct ospf6_interface *oi)
   struct listnode *node, *nnode;
   struct ospf6_assigned_prefix *ap;
 
+  assert (oi);
+
   for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nnode, ap))
   {
     if (!ap->is_valid) 
@@ -1486,6 +1502,8 @@ delete_invalid_assigned_prefixes_in_area (struct ospf6_area *oa)
 {
   struct listnode *node, *nnode;
   struct ospf6_interface *ifp;
+  
+  assert (oa);
 
   for (ALL_LIST_ELEMENTS (oa->if_list, node, nnode, ifp)) 
   {
@@ -1532,7 +1550,9 @@ get_first_hw_addr (void)
   struct ospf6_area *backbone_area;
 
   backbone_area = ospf6_area_lookup (0, ospf6);
- 
+  
+  assert (backbone_area);
+
   oi = listhead (backbone_area->if_list);
 
   return hw_addr_to_long (&oi->interface->hw_addr, oi->interface->hw_addr_len);
@@ -1629,6 +1649,8 @@ ula_generator (struct thread *thread)
   struct ospf6_aggregated_prefix *new_ula_prefix;
   struct in6_addr *addr;
 
+  assert (thread);
+
   addr = NULL;
   addr = read_ula ();
 
@@ -1637,6 +1659,8 @@ ula_generator (struct thread *thread)
     addr = generate_random_prefix ();
     write_ula (addr); 
   }
+ 
+  assert (addr);
 
   new_ula_prefix = malloc (sizeof (struct ospf6_aggregated_prefix));
 
@@ -1657,6 +1681,9 @@ static int ula_terminator (struct thread *thread)
 {
   struct listnode *node, *nnode;
   struct ospf6_aggregated_prefix *agp;
+  
+  assert (thread);
+
   for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nnode, agp))
   {
     if (agp->source == OSPF6_PREFIX_SOURCE_GENERATED)
@@ -1767,6 +1794,8 @@ router_has_reachable_ac_lsa (struct ospf6_neighbor *neighbor, struct list *reach
   struct listnode *node, *nnode;
   u_int32_t *rid;
 
+  assert (neighbor);
+
   for (ALL_LIST_ELEMENTS (reachable_rid_list, node, nnode, rid))
   {
     if (neighbor->router_id == *rid) return 1;
@@ -1779,6 +1808,8 @@ detect_inactive_neighbors (struct ospf6_area *oa, struct list * reachable_rid_li
 {
   struct listnode *node, *nnode;
   struct ospf6_interface *oi;
+
+  assert (oa);
 
   for (ALL_LIST_ELEMENTS (oa->if_list, node, nnode, oi))
   {
@@ -1801,6 +1832,8 @@ ospf6_assign_prefixes (void)
   
   /* OSPFv3 Autoconf only runs on the backbone */
   backbone_area = ospf6_area_lookup (0, ospf6);
+
+  assert(backbone_area);
 
   create_ac_lsdb_snapshot (backbone_area->lsdb, 
 			   &assigned_prefix_list, 
@@ -1834,6 +1867,7 @@ ospf6_assign_prefixes (void)
 static int 
 ospf6_assign_prefixes_thread (struct thread *t)
 {
+  assert (t);
   ospf6->assign_prefix_thread = NULL;
   ospf6_assign_prefixes ();
   return 0;
