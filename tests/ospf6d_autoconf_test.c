@@ -75,21 +75,37 @@ setup (void)
 
   master = malloc ( sizeof (struct thread));
 
-  ospf6 = malloc ( sizeof (struct ospf6));
-  
-  ospf6->area_list = list_new();
-  ospf6->aggregated_prefix_list = list_new ();
+  ospf6 = ospf6_create ();
+	backbone_area = ospf6_area_create (0, ospf6);
+	
+	ospf6->router_id = 0;
 
-  backbone_area = malloc (sizeof (struct ospf6_area));
-  backbone_area->area_id = 0;
 
-  backbone_area->lsdb = malloc (sizeof (struct ospf6_lsdb));
-  backbone_area->lsdb_self = malloc (sizeof (struct ospf6_lsdb));
+	/* PULL OUT */
+	struct ospf6_lsa *lsa;
+	struct ospf6_lsa_header *lsa_header;
 
-  backbone_area->lsdb->table = malloc (sizeof (struct route_table));
-  backbone_area->lsdb->table->top = malloc (sizeof (struct route_node));
+	lsa_header = malloc (4090);
 
-  listnode_add (ospf6->area_list, backbone_area);
+	lsa_header->age = 0;
+	lsa_header->type = htons (OSPF6_LSTYPE_AC);
+	lsa_header->id = 0;
+	lsa_header->adv_router = ospf6->router_id;
+	lsa_header->seqnum =
+	  ospf6_new_ls_seqnum (lsa_header->type, lsa_header->id,
+				lsa_header->adv_router, backbone_area->lsdb);
+
+	lsa_header->length = sizeof (struct ospf6_lsa_header);
+
+	ospf6_lsa_checksum (lsa_header);
+
+	ospf6_lsa_init ();
+	ospf6_intra_init ();
+
+	lsa = ospf6_lsa_create (lsa_header);
+
+	ospf6_lsdb_add (lsa, backbone_area->lsdb);
+
 }
 
 int 
@@ -98,6 +114,14 @@ main (int argc, int **argv)
   setup();  
 
   ospf6_assign_prefixes ();
-  
-  printf (OK "\n");
+	
+	if (ospf6->aggregated_prefix_list == NULL)
+	{
+		printf (FAILED "\n");
+	}	
+	else 
+	{
+  	printf (OK "\n");
+	}
+
 }
