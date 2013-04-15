@@ -112,7 +112,12 @@ struct test_case test_cases[] =
 			{1, 2, {"fc00::/48"}, 1, {"fc00::1/64"}, {0}}
 		}
 	},
-	 
+	{/* Test Case 4 */
+		1,
+		{
+			{1, 2, {"fc00::/48"}, 2, {"fc00::1/64", "fc00::1/64"}, {0, 0}}
+		}
+	}
 };
 
 /* A modified version of the AC-LSA origination code.
@@ -199,7 +204,8 @@ create_ac_lsa (struct ospf6_area *oa,
 		  ifp->ifindex = test_lsa->ifindex[i];
 
 		  oi = ospf6_interface_create (ifp);
-
+		  
+		  listnode_add(iflist, ifp);
 		  listnode_add(oa->if_list, oi);
 		}
 
@@ -275,6 +281,8 @@ setup (void)
 
 	ospf6_lsa_init ();
 	ospf6_intra_init ();
+
+	if_init ();
 }
 
 int 
@@ -282,5 +290,5 @@ main (int argc, int **argv)
 {
 	setup();  
 
-	do_test_case (&test_cases[3]);
+	do_test_case (&test_cases[4]);
 }
