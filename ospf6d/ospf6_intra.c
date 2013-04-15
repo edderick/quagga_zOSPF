@@ -719,7 +719,6 @@ ospf6_ac_lsa_originate (struct thread *thread)
 
 	assert (oa);
 
-
   if (IS_OSPF6_DEBUG_ORIGINATE (ROUTER))
     zlog_debug ("Originate AC-LSA for Area %s", oa->name);
 
