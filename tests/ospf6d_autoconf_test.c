@@ -100,12 +100,19 @@ struct test_case test_cases[] =
 			{1, 1, {"fc00::/48"}, 0, {}, {}}
 		}
 	},
-	{/* Test Case 1 */
+	{/* Test Case 2*/
 		1,
 		{
 			{1, 2, {"fc00::/48", "fc01::/48"}, 0, {}, {}}
 		}
-	}
+	},
+	{/* Test Case 3 */
+		1,
+		{
+			{1, 2, {"fc00::/48"}, 1, {"fc00::1/64"}, {0}}
+		}
+	},
+	 
 };
 
 /* A modified version of the AC-LSA origination code.
@@ -180,7 +187,21 @@ create_ac_lsa (struct ospf6_area *oa,
 		/* Send prefix */ 
 		ac_tlv_as_p->prefix_length = prefix.prefixlen;
 		ac_tlv_as_p->prefix = prefix.u.prefix6;
+	
 		ac_tlv_as_p->interface_id = test_lsa->ifindex[i];
+		/*TODO: Now add the interface if needed */
+		if (!ospf6_interface_lookup_by_ifindex (test_lsa->ifindex[i]))
+		{
+		  struct interface *ifp;
+		  struct ospf6_interface *oi;
+
+		  ifp = malloc (sizeof (struct interface));
+		  ifp->ifindex = test_lsa->ifindex[i];
+
+		  oi = ospf6_interface_create (ifp);
+
+		  listnode_add(oa->if_list, oi);
+		}
 
 		current_tlv = ++ac_tlv_as_p;
 	}
@@ -234,7 +255,7 @@ do_test_case (struct test_case *test_case)
 	}	
 	else 
 	{
-		printf("%d", ospf6->aggregated_prefix_list->count);
+		printf("%d", backbone_area->if_list->count);
 		printf (OK "\n");
 	}
 
@@ -254,7 +275,6 @@ setup (void)
 
 	ospf6_lsa_init ();
 	ospf6_intra_init ();
-
 }
 
 int 
@@ -262,5 +282,5 @@ main (int argc, int **argv)
 {
 	setup();  
 
-	do_test_case (&test_cases[2]);
+	do_test_case (&test_cases[3]);
 }
