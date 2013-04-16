@@ -39,8 +39,13 @@
 #define VT100_RED "\x1b[31m"
 #define VT100_GREEN "\x1b[32m"
 #define VT100_YELLOW "\x1b[33m"
+
 #define OK VT100_GREEN "OK" VT100_RESET
 #define FAILED VT100_RED "failed" VT100_RESET
+
+#define OWN_ID 0
+
+int fail_count;
 
 struct thread_master *master = NULL;
 
@@ -82,40 +87,43 @@ struct lsa
 
 struct test_case 
 {
+	int number;
 	int num_of_lsas;
+	int num_of_interfaces;
 	struct lsa lsa[10]; /* XXX */
 };
 
 struct test_case test_cases[] = 
 {
-	{/* Test Case 0 */
-		1, 
+	{/* Test Case: */ 0, 
+		1, 0,
 		{
 			{0, 0, {}, 0, {}, {}}
 		}
 	}, 
-	{/* Test Case 1 */
-		1,
+	{/* Test Case: */ 1,
+		1, 0,
 		{
-			{1, 1, {"fc00::/48"}, 0, {}, {}}
+			{OWN_ID, 1, {"fc00::/48"}, 0, {}, {}}
 		}
 	},
-	{/* Test Case 2*/
-		1,
+	{/* Test Case: */ 2,
+		1, 0,
 		{
-			{1, 2, {"fc00::/48", "fc01::/48"}, 0, {}, {}}
+			{OWN_ID, 2, {"fc00::/48", "fc01::/48"}, 0, {}, {}}
 		}
 	},
-	{/* Test Case 3 */
-		1,
+	{/* Test Case: */ 3,
+		1, 1,
 		{
-			{1, 2, {"fc00::/48"}, 1, {"fc00::1/64"}, {0}}
+			{OWN_ID, 1, {"fc00::/48"}, 0, {}, {0}}
 		}
 	},
-	{/* Test Case 4 */
-		1,
+	{/* Test Case: */ 4,
+		1, 2,
 		{
-			{1, 2, {"fc00::/48"}, 2, {"fc00::1/64", "fc00::1/64"}, {0, 0}}
+			{OWN_ID, 1, {"fc00::/48"}, 2, {"fc00::1/64", "fc00::2/64"}, {0, 1}},
+			{1, 0, {}, 1, {"fc00::3/64"}, {0}}
 		}
 	}
 };
@@ -124,8 +132,8 @@ struct test_case test_cases[] =
 	 Used to generated AC-LSAs. */
 static struct ospf6_lsa *
 create_ac_lsa (struct ospf6_area *oa,
-		struct lsa *test_lsa,
-		u_int32_t id)
+							 struct lsa *test_lsa,
+							 u_int32_t id)
 {
 	char buffer [OSPF6_MAX_LSASIZE];
 	struct ospf6_lsa_header *lsa_header;
@@ -156,7 +164,7 @@ create_ac_lsa (struct ospf6_area *oa,
 	ac_tlv_rhwfp = (struct ospf6_ac_tlv_router_hardware_fingerprint *) current_tlv; 
 	ac_tlv_rhwfp->header.type = OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT;
 	ac_tlv_rhwfp->header.length = OSPF6_AC_TLV_RHWFP_LENGTH;
-	ac_tlv_rhwfp->value = id; /*XXX*/
+	ac_tlv_rhwfp->value = id; 
 
 	/* Step onto next tlv? */
 	current_tlv = ++ac_tlv_rhwfp;
@@ -179,7 +187,6 @@ create_ac_lsa (struct ospf6_area *oa,
 	}
 
 	/* Assigned prefixes */
-
 	for (i = 0; i < test_lsa->num_of_assigned_prefixes; i++) 
 	{
 		struct prefix prefix; 
@@ -194,24 +201,28 @@ create_ac_lsa (struct ospf6_area *oa,
 		ac_tlv_as_p->prefix = prefix.u.prefix6;
 	
 		ac_tlv_as_p->interface_id = test_lsa->ifindex[i];
-		/*TODO: Now add the interface if needed */
-		if (!ospf6_interface_lookup_by_ifindex (test_lsa->ifindex[i]))
+
+		if (id == OWN_ID)
 		{
-		  struct interface *ifp;
-		  struct ospf6_interface *oi;
+			struct ospf6_interface *oi;
+			struct ospf6_assigned_prefix *ass_p;
+			oi = ospf6_interface_lookup_by_ifindex (i);
 
-		  ifp = malloc (sizeof (struct interface));
-		  ifp->ifindex = test_lsa->ifindex[i];
+			ass_p = malloc (sizeof (struct ospf6_assigned_prefix));
+			ass_p->prefix = prefix; 
+			ass_p->assigning_router_id = OWN_ID;
+			ass_p->assigning_router_if_id = i;
 
-		  oi = ospf6_interface_create (ifp);
-		  
-		  listnode_add(iflist, ifp);
-		  listnode_add(oa->if_list, oi);
+			if (!oi->assigned_prefix_list)
+			{
+				oi->assigned_prefix_list = list_new ();
+			}
+		
+			listnode_add (oi->assigned_prefix_list, ass_p); 
 		}
 
 		current_tlv = ++ac_tlv_as_p;
 	}
-
 
 	/* Fill LSA Header */
 	lsa_header->age = 0;
@@ -235,36 +246,8 @@ create_ac_lsa (struct ospf6_area *oa,
 static void 
 handle_lsa (struct lsa *lsa, struct ospf6_area *backbone_area)
 {
-	lsa = create_ac_lsa (backbone_area, lsa, 0);
+	lsa = create_ac_lsa (backbone_area, lsa, lsa->id);
 	ospf6_lsdb_add (lsa, backbone_area->lsdb);
-}
-
-static void 
-do_test_case (struct test_case *test_case)
-{
-	struct ospf6_area *backbone_area;
-	int i; 
-
-	backbone_area = ospf6_area_lookup (0, ospf6);
-
-	for (i = 0; i < test_case->num_of_lsas; i++)
-	{
-		handle_lsa (&test_case->lsa[i], backbone_area);
-	}
-
-	/* LSDB has been filled - Run the algorithm */
-	ospf6_assign_prefixes ();
-
-	if (ospf6->aggregated_prefix_list == NULL)
-	{
-		printf (FAILED "\n");
-	}	
-	else 
-	{
-		printf("%d", backbone_area->if_list->count);
-		printf (OK "\n");
-	}
-
 }
 
 static void 
@@ -285,10 +268,104 @@ setup (void)
 	if_init ();
 }
 
+static void 
+reset (void)
+{
+	struct ospf6_area *backbone_area;
+	backbone_area = ospf6_area_lookup (0, ospf6);
+	
+	list_delete (ospf6->aggregated_prefix_list);
+	ospf6->aggregated_prefix_list = list_new ();
+
+	list_delete (iflist);
+	iflist = list_new ();
+
+	list_delete (backbone_area->if_list);
+	backbone_area->if_list = list_new ();
+}
+
+static void 
+do_test_case (struct test_case *test_case)
+{
+	struct ospf6_area *backbone_area;
+	int i; 
+
+	reset ();
+
+	backbone_area = ospf6_area_lookup (0, ospf6);
+	
+	/* Now add the interface if needed */
+	for (i = 0; i < test_case->num_of_interfaces; i++)
+	{
+		struct interface *ifp;
+		struct ospf6_interface *oi;
+
+		ifp = malloc (sizeof (struct interface));
+		ifp->ifindex = i;
+
+		oi = ospf6_interface_create (ifp);
+
+		listnode_add(iflist, ifp);
+		listnode_add(backbone_area->if_list, oi);
+	}
+
+	for (i = 0; i < test_case->num_of_lsas; i++)
+	{
+		handle_lsa (&test_case->lsa[i], backbone_area);
+	}
+
+	/* LSDB has been filled - Run the algorithm */
+	ospf6_assign_prefixes ();
+
+	if (ospf6->aggregated_prefix_list == NULL)
+	{
+		printf ("Testcase %d: \n", test_case->number);
+		
+		printf (FAILED "\n");
+		
+		fail_count ++;
+	}	
+	else 
+	{
+		int assigned_prefix_count;
+	 	assigned_prefix_count = 0;	
+
+		printf ("Testcase %d: \n", test_case->number);
+		
+		printf("Num of interfaces: %d \n", iflist->count);
+		printf("Num of agg prefixes: %d \n", ospf6->aggregated_prefix_list->count);
+		
+		for (i = 0; i < iflist->count; i++)
+		{
+			struct ospf6_interface *oi;	
+			oi = ospf6_interface_lookup_by_ifindex (i);
+
+			printf("	If's AP count: %d\n", oi->assigned_prefix_list->count); 
+
+			assigned_prefix_count += oi->assigned_prefix_list->count;
+		}
+		
+		printf("Num of ass prefixes: %d \n", assigned_prefix_count);
+
+		printf (OK "\n\n");
+	}
+}
+
+
 int 
 main (int argc, int **argv)
 {
 	setup();  
 
+	fail_count = 0;
+
+	do_test_case (&test_cases[0]);
+	do_test_case (&test_cases[1]);
+	do_test_case (&test_cases[2]);
+	do_test_case (&test_cases[3]);
 	do_test_case (&test_cases[4]);
+
+	printf ("Total failed: %d \n", fail_count);
+	fflush (stdout);
+
 }
