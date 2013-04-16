@@ -575,6 +575,8 @@ handle_aggregated_prefix_tlv (char *current, struct ospf6_lsa *current_lsa)
   ag_prefix->advertising_router_id = current_lsa->header->adv_router;
   ag_prefix->source = lookup_aggregated_prefix_source (ag_prefix);
 
+  apply_mask (&ag_prefix->prefix);
+
   return ag_prefix;
 }
 
@@ -598,6 +600,8 @@ handle_assigned_prefix_tlv (char *current, struct ospf6_lsa *current_lsa)
 
   as_prefix->pending_thread = NULL;
   as_prefix->deprecation_thread = NULL;
+
+  apply_mask (&as_prefix->prefix);
 
   return as_prefix;
 }
@@ -646,19 +650,19 @@ create_ac_lsdb_snapshot (struct ospf6_lsdb *lsdb,
         struct ospf6_ac_tlv_header *ac_tlv_header = 
 	  (struct ospf6_ac_tlv_header *) current;
 
-	if (ac_tlv_header->type == OSPF6_AC_TLV_AGGREGATED_PREFIX)
+	if (ac_tlv_header->type == htons(OSPF6_AC_TLV_AGGREGATED_PREFIX))
 	{
 	    struct ospf6_aggregated_prefix *ag_prefix;
 	    ag_prefix = handle_aggregated_prefix_tlv (current, current_lsa);
 	    listnode_add (*aggregated_prefix_list, ag_prefix);
 	} 
-	else if (ac_tlv_header->type == OSPF6_AC_TLV_ASSIGNED_PREFIX)
+	else if (ac_tlv_header->type == htons(OSPF6_AC_TLV_ASSIGNED_PREFIX))
 	{
 	    struct ospf6_assigned_prefix *as_prefix;
 	    as_prefix = handle_assigned_prefix_tlv(current, current_lsa);
 	    listnode_add (*assigned_prefix_list, as_prefix);
 	} 
-	current += sizeof (struct ospf6_ac_tlv_header) + ac_tlv_header->length;
+	current += sizeof (struct ospf6_ac_tlv_header) + ntohs (ac_tlv_header->length);
     }    
     
     current_lsa = ospf6_lsdb_type_next (htons (OSPF6_LSTYPE_AC), current_lsa);

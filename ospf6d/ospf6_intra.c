@@ -636,57 +636,125 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
   {
     struct ospf6_ac_tlv_header *ac_tlv_header = (struct ospf6_ac_tlv_header *) current;
 
-    if (ac_tlv_header->type == OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT)
+    if (ac_tlv_header->type == htons (OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT))
     {  
       struct ospf6_ac_tlv_router_hardware_fingerprint *ac_tlv_rhwfp
 	= (struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_tlv_header;
+      u_int32_t *rhwf_char;
+      int i;
 
       snprintf (name, sizeof (name), "Router-Hardware-Fingerprint");
 
       vty_out (vty, "    Type: %s%s", name, VNL);
-      vty_out (vty, "    Length: %d%s", ac_tlv_header->length, VNL);
-      vty_out (vty, "    Value: %u%s", ac_tlv_rhwfp->value, VNL);
-      
-      current += sizeof (struct ospf6_ac_tlv_router_hardware_fingerprint);
+      vty_out (vty, "    Length: %d%s", ntohs (ac_tlv_header->length), VNL);
+
+      vty_out (vty, "    Value: %010u%s", ac_tlv_rhwfp->value, VNL);
+
+      /*TODO: Should be able to get rid of i */
+      rhwf_char = &ac_tlv_rhwfp->value + 1;
+      i = 4;
+      while (i < ntohs (ac_tlv_header->length)) 
+      {
+	vty_out (vty, "           %010u%s", *rhwf_char, VNL);
+	rhwf_char++;
+	i += 4;
+      }
+
+      current += sizeof (struct ospf6_ac_tlv_header) + ntohs (ac_tlv_header->length);
     }
-    else if (ac_tlv_header->type == OSPF6_AC_TLV_AGGREGATED_PREFIX)
+    else if (ac_tlv_header->type == htons(OSPF6_AC_TLV_AGGREGATED_PREFIX))
     {
       struct ospf6_ac_tlv_aggregated_prefix *ac_tlv_ag_p 
 	= (struct ospf6_ac_tlv_aggregated_prefix *) current;
+      struct prefix *prefix;
       char prefix_str[64]; 
 
       snprintf(name, sizeof (name), "Aggregated Prefix");
-      in6_addr2str (ac_tlv_ag_p->prefix, ac_tlv_ag_p->prefix_length, prefix_str, 64);
+
+      prefix = prefix_ipv6_new ();
+      prefix->prefixlen = ac_tlv_ag_p->prefix_length;
+      prefix->u.prefix6 = ac_tlv_ag_p->prefix;
+
+      apply_mask (prefix);
+      prefix2str (prefix, prefix_str, 64); 
+
+      prefix_free (prefix);
 
       vty_out (vty, "    Type: %s%s", name, VNL);
-      vty_out (vty, "    Length: %d%s", ac_tlv_header->length, VNL);
-      vty_out (vty, "	 Prefix: %s%s", prefix_str, VNL);
+      vty_out (vty, "    Length: %d%s", ntohs (ac_tlv_header->length), VNL);
+      vty_out (vty, "    Prefix: %s%s", prefix_str, VNL);
 
-      current += sizeof (struct ospf6_ac_tlv_aggregated_prefix);
-      
+      current += sizeof (struct ospf6_ac_tlv_header) + ntohs (ac_tlv_header->length);
     }
-    else if (ac_tlv_header->type == OSPF6_AC_TLV_ASSIGNED_PREFIX)
+    else if (ac_tlv_header->type == htons(OSPF6_AC_TLV_ASSIGNED_PREFIX))
     {
       struct ospf6_ac_tlv_assigned_prefix *ac_tlv_as_p
 	= (struct ospf6_ac_tlv_assigned_prefix *) current;
+      struct prefix *prefix;
       char prefix_str[64]; 
-      
-      snprintf (name, sizeof (name), "Assigned Prefix");
-      in6_addr2str (ac_tlv_as_p->prefix, ac_tlv_as_p->prefix_length, prefix_str, 64);
-      
+
+      snprintf(name, sizeof (name), "Assigned Prefix");
+
+      prefix = prefix_ipv6_new ();
+      prefix->prefixlen = ac_tlv_as_p->prefix_length;
+      prefix->u.prefix6 = ac_tlv_as_p->prefix;
+
+      apply_mask (prefix);
+      prefix2str (prefix, prefix_str, 64); 
+
+      prefix_free (prefix);
+
       vty_out (vty, "    Type: %s%s", name, VNL);
-      vty_out (vty, "    Length: %d%s", ac_tlv_header->length, VNL);
-      vty_out (vty, "	 Prefix: %s%s", prefix_str, VNL);
-      
-      current += sizeof (struct ospf6_ac_tlv_assigned_prefix);
-    
+      vty_out (vty, "    Length: %d%s", ntohs (ac_tlv_header->length), VNL);
+      vty_out (vty, "    Prefix: %s%s", prefix_str, VNL);
+
+      current += sizeof (struct ospf6_ac_tlv_header) + ntohs (ac_tlv_header->length);
+    }
+    else if (ac_tlv_header->type == htons(4))
+    {
+      struct ospf6_ac_tlv_assigned_prefix *ac_tlv_as_p
+	= (struct ospf6_ac_tlv_assigned_prefix *) current;
+
+      snprintf (name, sizeof (name), "Fingon Compatibility TLV");
+
+      vty_out (vty, "    Type: %s%s", name, VNL);
+      vty_out (vty, "    Length: %d%s", ntohs (ac_tlv_header->length), VNL);
+
+      /* XXX: Hack to allow a little Compatibility with a broken implementation */
+      struct ospf6_ac_tlv_assigned_prefix *nested
+	= (struct ospf6_ac_tlv_assigned_prefix *) &ac_tlv_as_p->prefix_length;
+
+      while (nested < ac_tlv_as_p + sizeof (struct ospf6_ac_tlv_header) + ntohs (ac_tlv_header->length))
+      {
+
+	struct prefix *prefix;
+	char prefix_str[64]; 
+
+	snprintf (name, sizeof (name), "Assigned Prefix TLV");
+
+	prefix = prefix_ipv6_new ();
+	prefix->prefixlen = nested->prefix_length;
+	prefix->u.prefix6 = nested->prefix;
+
+	apply_mask (prefix);
+	prefix2str (prefix, prefix_str, 64); 
+
+	vty_out (vty, "        Type: %s%s", name, VNL);
+	vty_out (vty, "        Length: %d%s", ntohs (nested->header.length), VNL);
+	vty_out (vty, "        Prefix: %s%s", prefix_str, VNL);
+
+	nested += sizeof (struct ospf6_ac_tlv_header) + ntohs (nested->header.length);
+      }
+
+      current += sizeof (struct ospf6_ac_tlv_header) + ntohs (ac_tlv_header->length);
     }
     else
     {
-      vty_out (vty, "    Unknown AC-LSA Type %s", VNL);
-      /* TODO: Ensure this works */
-      /* Print out a length and value for debugging..? */
-      current += sizeof (struct ospf6_ac_tlv_header) + ac_tlv_header->length;
+      vty_out (vty, "    Unknown AC-LSA %s", VNL); 
+      vty_out (vty, "    Type: %d %s", ntohs (ac_tlv_header->type), VNL); 
+      vty_out (vty, "    Length: %d %s", ntohs (ac_tlv_header->length), VNL); 
+
+      current += sizeof (struct ospf6_ac_tlv_header) + ntohs (ac_tlv_header->length);
     }
 
   }
@@ -732,8 +800,8 @@ ospf6_ac_lsa_originate (struct thread *thread)
   /* Fill AC-LSA */
   /* Router-Hardware Fingerprint */
   ac_tlv_rhwfp = (struct ospf6_ac_tlv_router_hardware_fingerprint *) current_tlv; 
-  ac_tlv_rhwfp->header.type = OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT;
-  ac_tlv_rhwfp->header.length = OSPF6_AC_TLV_RHWFP_LENGTH;
+  ac_tlv_rhwfp->header.type = htons (OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT);
+  ac_tlv_rhwfp->header.length = htons (OSPF6_AC_TLV_RHWFP_LENGTH);
   ac_tlv_rhwfp->value = ospf6_router_hardware_fingerprint ();
 
   /* Step onto next tlv? */
@@ -744,8 +812,8 @@ ospf6_ac_lsa_originate (struct thread *thread)
   {
     if (aggregated_prefix->advertising_router_id == ospf6->router_id) {
       ac_tlv_ag_p = (struct ospf6_ac_tlv_aggregated_prefix *) current_tlv;
-      ac_tlv_ag_p->header.type = OSPF6_AC_TLV_AGGREGATED_PREFIX;
-      ac_tlv_ag_p->header.length = OSPF6_AC_TLV_AGGREGATED_PREFIX_LENGTH;
+      ac_tlv_ag_p->header.type = htons (OSPF6_AC_TLV_AGGREGATED_PREFIX);
+      ac_tlv_ag_p->header.length = htons (OSPF6_AC_TLV_AGGREGATED_PREFIX_LENGTH);
 
       /* Send prefix */ 
       ac_tlv_ag_p->prefix_length = aggregated_prefix->prefix.prefixlen;
@@ -765,8 +833,8 @@ ospf6_ac_lsa_originate (struct thread *thread)
     {
       if (assigned_prefix->assigning_router_id == ospf6->router_id) {
 	ac_tlv_as_p = (struct ospf6_ac_tlv_assigned_prefix *) current_tlv;
-	ac_tlv_as_p->header.type = OSPF6_AC_TLV_ASSIGNED_PREFIX;
-	ac_tlv_as_p->header.length = OSPF6_AC_TLV_ASSIGNED_PREFIX_LENGTH;
+	ac_tlv_as_p->header.type = htons (OSPF6_AC_TLV_ASSIGNED_PREFIX);
+	ac_tlv_as_p->header.length = htons (OSPF6_AC_TLV_ASSIGNED_PREFIX_LENGTH);
 
 	/* Send prefix */ 
 	ac_tlv_as_p->prefix_length = assigned_prefix->prefix.prefixlen;
