@@ -53,321 +53,321 @@ int auto_conf = 1;
 
 zebra_capabilities_t _caps_p [] =
 {
-	ZCAP_NET_RAW,
-	ZCAP_BIND
+  ZCAP_NET_RAW,
+  ZCAP_BIND
 };
 
 struct zebra_privs_t ospf6d_privs =
 {
 #if defined(QUAGGA_USER)
-	.user = QUAGGA_USER,
+  .user = QUAGGA_USER,
 #endif
 #if defined QUAGGA_GROUP
-	.group = QUAGGA_GROUP,
+  .group = QUAGGA_GROUP,
 #endif
 #ifdef VTY_GROUP
-	.vty_group = VTY_GROUP,
+  .vty_group = VTY_GROUP,
 #endif
-	.caps_p = _caps_p,
-	.cap_num_p = 2,
-	.cap_num_i = 0
+  .caps_p = _caps_p,
+  .cap_num_p = 2,
+  .cap_num_i = 0
 };
 
 struct lsa 
 {
-	u_int32_t id;
+  u_int32_t id;
 
-	int num_of_aggregated_prefixes;
-	char aggregated_prefix[10][64];
+  int num_of_aggregated_prefixes;
+  char aggregated_prefix[10][64];
 
-	int num_of_assigned_prefixes;
-	char assigned_prefix[10][64];
-	int ifindex[10];
+  int num_of_assigned_prefixes;
+  char assigned_prefix[10][64];
+  int ifindex[10];
 };
 
 struct test_case 
 {
-	int number;
-	int num_of_lsas;
-	int num_of_interfaces;
-	struct lsa lsa[10]; /* XXX */
+  int number;
+  int num_of_lsas;
+  int num_of_interfaces;
+  struct lsa lsa[10]; /* XXX */
 };
 
 struct test_case test_cases[] = 
 {
-	{/* Test Case: */ 0, 
-		1, 0,
-		{
-			{0, 0, {}, 0, {}, {}}
-		}
-	}, 
-	{/* Test Case: */ 1,
-		1, 0,
-		{
-			{OWN_ID, 1, {"fc00::/48"}, 0, {}, {}}
-		}
-	},
-	{/* Test Case: */ 2,
-		1, 0,
-		{
-			{OWN_ID, 2, {"fc00::/48", "fc01::/48"}, 0, {}, {}}
-		}
-	},
-	{/* Test Case: */ 3,
-		1, 1,
-		{
-			{OWN_ID, 1, {"fc00::/48"}, 0, {}, {0}}
-		}
-	},
-	{/* Test Case: */ 4,
-		1, 2,
-		{
-			{OWN_ID, 1, {"fc00::/48"}, 2, {"fc00::1/64", "fc00::2/64"}, {0, 1}},
-			{1, 0, {}, 1, {"fc00::3/64"}, {0}}
-		}
-	}
+  {/* Test Case: */ 0, 
+    1, 0,
+    {
+      {0, 0, {}, 0, {}, {}}
+    }
+  }, 
+  {/* Test Case: */ 1,
+    1, 0,
+    {
+      {OWN_ID, 1, {"fc00::/48"}, 0, {}, {}}
+    }
+  },
+  {/* Test Case: */ 2,
+    1, 0,
+    {
+      {OWN_ID, 2, {"fc00::/48", "fc01::/48"}, 0, {}, {}}
+    }
+  },
+  {/* Test Case: */ 3,
+    1, 1,
+    {
+      {OWN_ID, 1, {"fc00::/48"}, 0, {}, {0}}
+    }
+  },
+  {/* Test Case: */ 4,
+    2, 2,
+    {
+      {OWN_ID, 1, {"fc00::/48"}, 2, {"fc00::1/64", "fc00::2/64"}, {0, 1}},
+      {1, 0, {}, 1, {"fc00::3/64"}, {0}}
+    }
+  }
 };
 
 /* A modified version of the AC-LSA origination code.
-	 Used to generated AC-LSAs. */
-static struct ospf6_lsa *
+   Used to generated AC-LSAs. */
+  static struct ospf6_lsa *
 create_ac_lsa (struct ospf6_area *oa,
-							 struct lsa *test_lsa,
-							 u_int32_t id)
+    struct lsa *test_lsa,
+    u_int32_t id)
 {
-	char buffer [OSPF6_MAX_LSASIZE];
-	struct ospf6_lsa_header *lsa_header;
-	struct ospf6_lsa *lsa;
+  char buffer [OSPF6_MAX_LSASIZE];
+  struct ospf6_lsa_header *lsa_header;
+  struct ospf6_lsa *lsa;
 
-	int i;
+  int i;
 
-	u_int32_t link_state_id = 0;
-	void *current_tlv;
-	struct ospf6_ac_lsa *ac_lsa;
-	struct ospf6_ac_tlv_router_hardware_fingerprint *ac_tlv_rhwfp;
-	struct ospf6_ac_tlv_aggregated_prefix *ac_tlv_ag_p;
-	struct ospf6_ac_tlv_assigned_prefix *ac_tlv_as_p;
+  u_int32_t link_state_id = 0;
+  void *current_tlv;
+  struct ospf6_ac_lsa *ac_lsa;
+  struct ospf6_ac_tlv_router_hardware_fingerprint *ac_tlv_rhwfp;
+  struct ospf6_ac_tlv_aggregated_prefix *ac_tlv_ag_p;
+  struct ospf6_ac_tlv_assigned_prefix *ac_tlv_as_p;
 
-	struct listnode *node, *nextnode;
-	struct ospf6_aggregated_prefix *aggregated_prefix;
-	struct ospf6_interface *ifp;
+  struct listnode *node, *nextnode;
+  struct ospf6_aggregated_prefix *aggregated_prefix;
+  struct ospf6_interface *ifp;
 
-	memset (buffer, 0, sizeof (buffer));
-	lsa_header = (struct ospf6_lsa_header *) buffer;
-	ac_lsa = (struct ospf6_ac_lsa *)
-		((caddr_t) lsa_header + sizeof (struct ospf6_lsa_header));
+  memset (buffer, 0, sizeof (buffer));
+  lsa_header = (struct ospf6_lsa_header *) buffer;
+  ac_lsa = (struct ospf6_ac_lsa *)
+    ((caddr_t) lsa_header + sizeof (struct ospf6_lsa_header));
 
-	current_tlv = ac_lsa;
+  current_tlv = ac_lsa;
 
-	/* Fill AC-LSA */
-	/* Router-Hardware Fingerprint */
-	ac_tlv_rhwfp = (struct ospf6_ac_tlv_router_hardware_fingerprint *) current_tlv; 
-	ac_tlv_rhwfp->header.type = OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT;
-	ac_tlv_rhwfp->header.length = OSPF6_AC_TLV_RHWFP_LENGTH;
-	
-	/*TODO: FIX THIS */
-	memcpy (&ac_tlv_rhwfp->value, 0, 32); 
+  /* Fill AC-LSA */
+  /* Router-Hardware Fingerprint */
+  ac_tlv_rhwfp = (struct ospf6_ac_tlv_router_hardware_fingerprint *) current_tlv; 
+  ac_tlv_rhwfp->header.type = htons (OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT);
+  ac_tlv_rhwfp->header.length = htons (OSPF6_AC_TLV_RHWFP_LENGTH);
 
-	/* Step onto next tlv? */
-	current_tlv = ++ac_tlv_rhwfp;
+  /*TODO: FIX THIS */
+  memset (&ac_tlv_rhwfp->value, 0, 32); 
 
-	/* Aggregated (allocated) prefixes */
-	for (i = 0; i < test_lsa->num_of_aggregated_prefixes; i++) 
-	{
-		struct prefix prefix; 
-		str2prefix (test_lsa->aggregated_prefix[i], &prefix);
+  /* Step onto next tlv? */
+  current_tlv = ++ac_tlv_rhwfp;
 
-		ac_tlv_ag_p = (struct ospf6_ac_tlv_aggregated_prefix *) current_tlv;
-		ac_tlv_ag_p->header.type = OSPF6_AC_TLV_AGGREGATED_PREFIX;
-		ac_tlv_ag_p->header.length = OSPF6_AC_TLV_AGGREGATED_PREFIX_LENGTH;
+  /* Aggregated (allocated) prefixes */
+  for (i = 0; i < test_lsa->num_of_aggregated_prefixes; i++) 
+  {
+    struct prefix prefix; 
+    str2prefix (test_lsa->aggregated_prefix[i], &prefix);
 
-		/* Send prefix */ 
-		ac_tlv_ag_p->prefix_length = prefix.prefixlen;
-		ac_tlv_ag_p->prefix = prefix.u.prefix6;
+    ac_tlv_ag_p = (struct ospf6_ac_tlv_aggregated_prefix *) current_tlv;
+    ac_tlv_ag_p->header.type = htons (OSPF6_AC_TLV_AGGREGATED_PREFIX);
+    ac_tlv_ag_p->header.length = htons (OSPF6_AC_TLV_AGGREGATED_PREFIX_LENGTH);
 
-		current_tlv = ++ac_tlv_ag_p;
-	}
+    /* Send prefix */ 
+    ac_tlv_ag_p->prefix_length = prefix.prefixlen;
+    ac_tlv_ag_p->prefix = prefix.u.prefix6;
 
-	/* Assigned prefixes */
-	for (i = 0; i < test_lsa->num_of_assigned_prefixes; i++) 
-	{
-		struct prefix prefix; 
-		str2prefix (test_lsa->aggregated_prefix[i], &prefix);
+    current_tlv = ++ac_tlv_ag_p;
+  }
 
-		ac_tlv_as_p = (struct ospf6_ac_tlv_assigned_prefix *) current_tlv;
-		ac_tlv_as_p->header.type = OSPF6_AC_TLV_ASSIGNED_PREFIX;
-		ac_tlv_as_p->header.length = OSPF6_AC_TLV_ASSIGNED_PREFIX_LENGTH;
+  /* Assigned prefixes */
+  for (i = 0; i < test_lsa->num_of_assigned_prefixes; i++) 
+  {
+    struct prefix prefix; 
+    str2prefix (test_lsa->aggregated_prefix[i], &prefix);
 
-		/* Send prefix */ 
-		ac_tlv_as_p->prefix_length = prefix.prefixlen;
-		ac_tlv_as_p->prefix = prefix.u.prefix6;
-	
-		ac_tlv_as_p->interface_id = test_lsa->ifindex[i];
+    ac_tlv_as_p = (struct ospf6_ac_tlv_assigned_prefix *) current_tlv;
+    ac_tlv_as_p->header.type = htons (OSPF6_AC_TLV_ASSIGNED_PREFIX);
+    ac_tlv_as_p->header.length = htons (OSPF6_AC_TLV_ASSIGNED_PREFIX_LENGTH);
 
-		if (id == OWN_ID)
-		{
-			struct ospf6_interface *oi;
-			struct ospf6_assigned_prefix *ass_p;
-			oi = ospf6_interface_lookup_by_ifindex (i);
+    /* Send prefix */ 
+    ac_tlv_as_p->prefix_length = prefix.prefixlen;
+    ac_tlv_as_p->prefix = prefix.u.prefix6;
 
-			ass_p = malloc (sizeof (struct ospf6_assigned_prefix));
-			ass_p->prefix = prefix; 
-			ass_p->assigning_router_id = OWN_ID;
-			ass_p->assigning_router_if_id = i;
+    ac_tlv_as_p->interface_id = test_lsa->ifindex[i];
 
-			if (!oi->assigned_prefix_list)
-			{
-				oi->assigned_prefix_list = list_new ();
-			}
-		
-			listnode_add (oi->assigned_prefix_list, ass_p); 
-		}
+    if (id == OWN_ID)
+    {
+      struct ospf6_interface *oi;
+      struct ospf6_assigned_prefix *ass_p;
+      oi = ospf6_interface_lookup_by_ifindex (i);
 
-		current_tlv = ++ac_tlv_as_p;
-	}
+      ass_p = malloc (sizeof (struct ospf6_assigned_prefix));
+      ass_p->prefix = prefix; 
+      ass_p->assigning_router_id = OWN_ID;
+      ass_p->assigning_router_if_id = i;
 
-	/* Fill LSA Header */
-	lsa_header->age = 0;
-	lsa_header->type = htons (OSPF6_LSTYPE_AC);
-	lsa_header->id = htonl (link_state_id);
-	lsa_header->adv_router = id;
-	lsa_header->seqnum =
-		ospf6_new_ls_seqnum (lsa_header->type, lsa_header->id,
-				lsa_header->adv_router, oa->lsdb);
-	lsa_header->length = htons ((caddr_t) current_tlv - (caddr_t) buffer);
+      if (!oi->assigned_prefix_list)
+      {
+	oi->assigned_prefix_list = list_new ();
+      }
 
-	/* LSA checksum */
-	ospf6_lsa_checksum (lsa_header);
+      listnode_add (oi->assigned_prefix_list, ass_p); 
+    }
 
-	/* create LSA */
-	lsa = ospf6_lsa_create (lsa_header);
+    current_tlv = ++ac_tlv_as_p;
+  }
 
-	return lsa;
+  /* Fill LSA Header */
+  lsa_header->age = 0;
+  lsa_header->type = htons (OSPF6_LSTYPE_AC);
+  lsa_header->id = htonl (link_state_id);
+  lsa_header->adv_router = id;
+  lsa_header->seqnum =
+    ospf6_new_ls_seqnum (lsa_header->type, lsa_header->id,
+	lsa_header->adv_router, oa->lsdb);
+  lsa_header->length = htons ((caddr_t) current_tlv - (caddr_t) buffer);
+
+  /* LSA checksum */
+  ospf6_lsa_checksum (lsa_header);
+
+  /* create LSA */
+  lsa = ospf6_lsa_create (lsa_header);
+
+  return lsa;
 }
 
-static void 
+  static void 
 handle_lsa (struct lsa *lsa, struct ospf6_area *backbone_area)
 {
-	lsa = create_ac_lsa (backbone_area, lsa, lsa->id);
-	ospf6_lsdb_add (lsa, backbone_area->lsdb);
+  lsa = create_ac_lsa (backbone_area, lsa, lsa->id);
+  ospf6_lsdb_add (lsa, backbone_area->lsdb);
 }
 
-static void 
+  static void 
 setup (void)
 {
-	struct ospf6_area *backbone_area;
+  struct ospf6_area *backbone_area;
 
-	master = malloc ( sizeof (struct thread));
+  master = malloc ( sizeof (struct thread));
 
-	ospf6 = ospf6_create ();
-	backbone_area = ospf6_area_create (0, ospf6);
+  ospf6 = ospf6_create ();
+  backbone_area = ospf6_area_create (0, ospf6);
 
-	ospf6->router_id = 0;
+  ospf6->router_id = 0;
 
-	ospf6_lsa_init ();
-	ospf6_intra_init ();
+  ospf6_lsa_init ();
+  ospf6_intra_init ();
 
-	if_init ();
+  if_init ();
 }
 
-static void 
+  static void 
 reset (void)
 {
-	struct ospf6_area *backbone_area;
-	backbone_area = ospf6_area_lookup (0, ospf6);
-	
-	list_delete (ospf6->aggregated_prefix_list);
-	ospf6->aggregated_prefix_list = list_new ();
+  struct ospf6_area *backbone_area;
+  backbone_area = ospf6_area_lookup (0, ospf6);
 
-	list_delete (iflist);
-	iflist = list_new ();
+  list_delete (ospf6->aggregated_prefix_list);
+  ospf6->aggregated_prefix_list = list_new ();
 
-	list_delete (backbone_area->if_list);
-	backbone_area->if_list = list_new ();
+  list_delete (iflist);
+  iflist = list_new ();
+
+  list_delete (backbone_area->if_list);
+  backbone_area->if_list = list_new ();
 }
 
-static void 
+  static void 
 do_test_case (struct test_case *test_case)
 {
-	struct ospf6_area *backbone_area;
-	int i; 
+  struct ospf6_area *backbone_area;
+  int i; 
 
-	reset ();
+  reset ();
 
-	backbone_area = ospf6_area_lookup (0, ospf6);
-	
-	/* Now add the interface if needed */
-	for (i = 0; i < test_case->num_of_interfaces; i++)
-	{
-		struct interface *ifp;
-		struct ospf6_interface *oi;
+  backbone_area = ospf6_area_lookup (0, ospf6);
 
-		ifp = malloc (sizeof (struct interface));
-		ifp->ifindex = i;
+  /* Now add the interface if needed */
+  for (i = 0; i < test_case->num_of_interfaces; i++)
+  {
+    struct interface *ifp;
+    struct ospf6_interface *oi;
 
-		oi = ospf6_interface_create (ifp);
+    ifp = malloc (sizeof (struct interface));
+    ifp->ifindex = i;
 
-		listnode_add(iflist, ifp);
-		listnode_add(backbone_area->if_list, oi);
-	}
+    oi = ospf6_interface_create (ifp);
 
-	for (i = 0; i < test_case->num_of_lsas; i++)
-	{
-		handle_lsa (&test_case->lsa[i], backbone_area);
-	}
+    listnode_add(iflist, ifp);
+    listnode_add(backbone_area->if_list, oi);
+  }
 
-	/* LSDB has been filled - Run the algorithm */
-	ospf6_assign_prefixes ();
+  for (i = 0; i < test_case->num_of_lsas; i++)
+  {
+    handle_lsa (&test_case->lsa[i], backbone_area);
+  }
 
-	if (ospf6->aggregated_prefix_list == NULL)
-	{
-		printf ("Testcase %d: \n", test_case->number);
-		
-		printf (FAILED "\n");
-		
-		fail_count ++;
-	}	
-	else 
-	{
-		int assigned_prefix_count;
-	 	assigned_prefix_count = 0;	
+  /* LSDB has been filled - Run the algorithm */
+  ospf6_assign_prefixes ();
 
-		printf ("Testcase %d: \n", test_case->number);
-		
-		printf("Num of interfaces: %d \n", iflist->count);
-		printf("Num of agg prefixes: %d \n", ospf6->aggregated_prefix_list->count);
-		
-		for (i = 0; i < iflist->count; i++)
-		{
-			struct ospf6_interface *oi;	
-			oi = ospf6_interface_lookup_by_ifindex (i);
+  if (ospf6->aggregated_prefix_list == NULL)
+  {
+    printf ("Testcase %d: \n", test_case->number);
 
-			printf("	If's AP count: %d\n", oi->assigned_prefix_list->count); 
+    printf (FAILED "\n");
 
-			assigned_prefix_count += oi->assigned_prefix_list->count;
-		}
-		
-		printf("Num of ass prefixes: %d \n", assigned_prefix_count);
+    fail_count ++;
+  }	
+  else 
+  {
+    int assigned_prefix_count;
+    assigned_prefix_count = 0;	
 
-		printf (OK "\n\n");
-	}
+    printf ("Testcase %d: \n", test_case->number);
+
+    printf("Num of interfaces: %d \n", iflist->count);
+    printf("Num of agg prefixes: %d \n", ospf6->aggregated_prefix_list->count);
+
+    for (i = 0; i < iflist->count; i++)
+    {
+      struct ospf6_interface *oi;	
+      oi = ospf6_interface_lookup_by_ifindex (i);
+
+      printf("	If's AP count: %d\n", oi->assigned_prefix_list->count); 
+
+      assigned_prefix_count += oi->assigned_prefix_list->count;
+    }
+
+    printf("Num of ass prefixes: %d \n", assigned_prefix_count);
+
+    printf (OK "\n\n");
+  }
 }
 
 
-int 
+  int 
 main (int argc, int **argv)
 {
-	setup();  
+  setup();  
 
-	fail_count = 0;
+  fail_count = 0;
 
-	do_test_case (&test_cases[0]);
-	do_test_case (&test_cases[1]);
-	do_test_case (&test_cases[2]);
-	do_test_case (&test_cases[3]);
-	do_test_case (&test_cases[4]);
+  do_test_case (&test_cases[0]);
+  do_test_case (&test_cases[1]);
+  do_test_case (&test_cases[2]);
+  do_test_case (&test_cases[3]);
+  do_test_case (&test_cases[4]);
 
-	printf ("Total failed: %d \n", fail_count);
-	fflush (stdout);
+  printf ("Total failed: %d \n", fail_count);
+  fflush (stdout);
 
 }
