@@ -44,7 +44,10 @@
 #define FAILED VT100_RED "failed" VT100_RESET
 
 #define OWN_ID 0
+#define CONNECTED_IF_ID 0
+#define NOT_NEIGHBOR -1
 
+const int test_count = 9;
 int fail_count;
 
 struct thread_master *master = NULL;
@@ -77,6 +80,8 @@ struct lsa
 {
   u_int32_t id;
 
+  int if_index;
+
   int num_of_aggregated_prefixes;
   char aggregated_prefix[10][64];
 
@@ -98,32 +103,61 @@ struct test_case test_cases[] =
   {/* Test Case: */ 0, 
     1, 0,
     {
-      {0, 0, {}, 0, {}, {}}
+      {OWN_ID, 0, 0, {}, 0, {}, {}}
     }
   }, 
   {/* Test Case: */ 1,
     1, 0,
     {
-      {OWN_ID, 1, {"fc00::/48"}, 0, {}, {}}
+      {OWN_ID, 0, 1, {"fc00::/48"}, 0, {}, {}}
     }
   },
   {/* Test Case: */ 2,
     1, 0,
     {
-      {OWN_ID, 2, {"fc00::/48", "fc01::/48"}, 0, {}, {}}
+      {OWN_ID, 0, 2, {"fc00::/48", "fc01::/48"}, 0, {}, {}}
     }
   },
   {/* Test Case: */ 3,
     1, 1,
     {
-      {OWN_ID, 1, {"fc00::/48"}, 0, {}, {0}}
+      {OWN_ID, 0, 1, {"fc00::/48"}, 0, {}, {0}}
     }
   },
   {/* Test Case: */ 4,
     2, 2,
     {
-      {OWN_ID, 1, {"fc00::/48"}, 2, {"fc00::1/64", "fc00::2/64"}, {0, 1}},
-      {1, 0, {}, 1, {"fc00::3/64"}, {0}}
+      {OWN_ID, 0, 1, {"fc00::/48"}, 2, {"fc00:0:0:1::/64", "fc00:0:0:2::/64"}, {0, 1}},
+      {1, 0, 0, {}, 1, {"fc00:0:0:3::/64"}, {CONNECTED_IF_ID}}
+    }
+  },
+  {/* Test Case: */ 5,
+    2, 2,
+    {
+      {OWN_ID, 0, 1, {"fc00::/48"}, 2, {"fc00:0:0:1::/64", "fc00:0:0:2::/64"}, {0, 1}},
+      {1, 0, 1, {"fc00:1::/48"}, 1, {"fc00:0:0:3::/64"}, {CONNECTED_IF_ID}}
+    }
+  },
+  {/* Test Case: */ 6,
+    3, 2,
+    {
+      {OWN_ID, 0, 0, {}, 0, {}, {}},
+      {1, 0, 1, {"fc00::/48"}, 1, {"fc00:0:0:1::/64"}, {CONNECTED_IF_ID}},
+      {2, 1, 0, {}, 1, {"fc00:0:0:2::/64"}, {CONNECTED_IF_ID}}
+    }
+  },
+  {/* Test Case: */ 7,
+    3, 2,
+    {
+      {OWN_ID, 0, 0, {}, 0, {}, {}},
+      {1, 0, 1, {"fc00::/48"}, 1, {"fc00:0:0:1::/64"}, {CONNECTED_IF_ID}},
+      {2, NOT_NEIGHBOR, 0, {}, 1, {"fc00:0:0:2::/64"}, {CONNECTED_IF_ID}}
+    }
+  },
+  {/* Test Case: */ 8,
+    1, 2,
+    {
+      {OWN_ID, 0, 2, {"fc00::/48", "fc01::/48"}, 0, {}, {}}
     }
   }
 };
@@ -192,7 +226,7 @@ create_ac_lsa (struct ospf6_area *oa,
   for (i = 0; i < test_lsa->num_of_assigned_prefixes; i++) 
   {
     struct prefix prefix; 
-    str2prefix (test_lsa->aggregated_prefix[i], &prefix);
+    str2prefix (test_lsa->assigned_prefix[i], &prefix);
 
     ac_tlv_as_p = (struct ospf6_ac_tlv_assigned_prefix *) current_tlv;
     ac_tlv_as_p->header.type = htons (OSPF6_AC_TLV_ASSIGNED_PREFIX);
@@ -214,6 +248,12 @@ create_ac_lsa (struct ospf6_area *oa,
       ass_p->prefix = prefix; 
       ass_p->assigning_router_id = OWN_ID;
       ass_p->assigning_router_if_id = i;
+      ass_p->is_valid = 1;
+
+      ass_p->interface = oi;
+
+      ass_p->pending_thread = NULL;
+      ass_p->deprecation_thread = NULL;
 
       if (!oi->assigned_prefix_list)
       {
@@ -245,11 +285,28 @@ create_ac_lsa (struct ospf6_area *oa,
   return lsa;
 }
 
+static void create_neighbor (struct lsa *lsa)
+{
+  struct ospf6_interface *oi;
+  struct ospf6_neighbor *on;
+  
+  oi = ospf6_interface_lookup_by_ifindex (lsa->if_index);
+  on = ospf6_neighbor_create (lsa->id, oi);
+  
+  on->ifindex = CONNECTED_IF_ID;
+  on->state = OSPF6_NEIGHBOR_FULL;
+}
+
   static void 
 handle_lsa (struct lsa *lsa, struct ospf6_area *backbone_area)
 {
-  lsa = create_ac_lsa (backbone_area, lsa, lsa->id);
-  ospf6_lsdb_add (lsa, backbone_area->lsdb);
+  struct ospf6_lsa *new_lsa;
+  new_lsa = create_ac_lsa (backbone_area, lsa, lsa->id);
+  if ((lsa->id != OWN_ID) && (lsa->if_index != NOT_NEIGHBOR))
+  {
+    create_neighbor (lsa);
+  }
+  ospf6_lsdb_add (new_lsa, backbone_area->lsdb);
 }
 
   static void 
@@ -275,6 +332,12 @@ reset (void)
 {
   struct ospf6_area *backbone_area;
   backbone_area = ospf6_area_lookup (0, ospf6);
+
+  ospf6_lsdb_delete (backbone_area->lsdb);
+  backbone_area->lsdb = ospf6_lsdb_create (backbone_area);
+
+  ospf6_lsdb_delete (backbone_area->lsdb_self);
+  backbone_area->lsdb_self = ospf6_lsdb_create (backbone_area);
 
   list_delete (ospf6->aggregated_prefix_list);
   ospf6->aggregated_prefix_list = list_new ();
@@ -304,8 +367,17 @@ do_test_case (struct test_case *test_case)
 
     ifp = malloc (sizeof (struct interface));
     ifp->ifindex = i;
+ 
+    //TODO: More compact way?
+    ifp->name[0] = 'e'; 
+    ifp->name[1] = 't';
+    ifp->name[2] = 'h';
+    ifp->name[3] = 'x';
+    ifp->name[4] = '\0';
 
     oi = ospf6_interface_create (ifp);
+  
+    oi->area = backbone_area;
 
     listnode_add(iflist, ifp);
     listnode_add(backbone_area->if_list, oi);
@@ -330,26 +402,54 @@ do_test_case (struct test_case *test_case)
   else 
   {
     int assigned_prefix_count;
+    struct listnode *node, *nnode; 
+    struct ospf6_aggregated_prefix  *agp;
+
     assigned_prefix_count = 0;	
 
-    printf ("Testcase %d: \n", test_case->number);
+    printf ("Testcase %d ", test_case->number);
+    printf (OK "\n");
 
-    printf("Num of interfaces: %d \n", iflist->count);
-    printf("Num of agg prefixes: %d \n", ospf6->aggregated_prefix_list->count);
+
+    printf("Toal interface count: %d \n", iflist->count);
+
+    for (ALL_LIST_ELEMENTS(ospf6->aggregated_prefix_list, node, nnode, agp))
+    {
+	char buf[64];
+	prefix2str (&agp->prefix, buf, 64);
+	printf (" Aggregated Prefix: %s\n", buf);
+    }
+    
+    printf("Total Aggregated Prefix count: %d \n", ospf6->aggregated_prefix_list->count);
 
     for (i = 0; i < iflist->count; i++)
     {
       struct ospf6_interface *oi;	
+      struct ospf6_assigned_prefix  *ap;
+      
       oi = ospf6_interface_lookup_by_ifindex (i);
 
-      printf("	If's AP count: %d\n", oi->assigned_prefix_list->count); 
+      printf(" eth%d's Assigned Prefix count: %d\n", i, oi->assigned_prefix_list->count); 
 
+      for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nnode, ap))
+      {
+	char buf[64];
+	prefix2str (&ap->prefix, buf, 64);
+	printf ("  Assigned Prefix: %s\n", buf);
+	if (ap->pending_thread) printf ("   Pending Thread\n");
+	if (!ap->is_valid) printf ("   Not Valid\n");
+	if (ap->deprecation_thread) printf ("   Deprecation Thread\n");
+      }
+      
       assigned_prefix_count += oi->assigned_prefix_list->count;
     }
 
-    printf("Num of ass prefixes: %d \n", assigned_prefix_count);
+    printf("Total Assigned Prefix count: %d \n", assigned_prefix_count);
 
-    printf (OK "\n\n");
+    if (ospf6->ula_generation_thread) printf ("Generating a ULA\n");
+
+    printf("\n");
+
   }
 }
 
@@ -357,15 +457,15 @@ do_test_case (struct test_case *test_case)
   int 
 main (int argc, int **argv)
 {
+  int i;
   setup();  
 
   fail_count = 0;
 
-  do_test_case (&test_cases[0]);
-  do_test_case (&test_cases[1]);
-  do_test_case (&test_cases[2]);
-  do_test_case (&test_cases[3]);
-  do_test_case (&test_cases[4]);
+  for (i = 0; i < test_count; i++)
+  {
+    do_test_case (&test_cases[i]);
+  }
 
   printf ("Total failed: %d \n", fail_count);
   fflush (stdout);
