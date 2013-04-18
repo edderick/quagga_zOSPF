@@ -710,6 +710,7 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
 
       vty_out (vty, "    Type: %s%s", name, VNL);
       vty_out (vty, "    Length: %d%s", ntohs (ac_tlv_header->length), VNL);
+      vty_out (vty, "    If-ID: %d%s", ntohs (ac_tlv_as_p->interface_id), VNL); 
       vty_out (vty, "    Prefix: %s%s", prefix_str, VNL);
 
       current += sizeof (struct ospf6_ac_tlv_header) + ((ntohs (ac_tlv_header->length) + 4 - 1) / 4) * 4;
