@@ -42,8 +42,8 @@
 /* for structures and macros ospf6_lsa_examin() needs */
 #include "ospf6_abr.h"
 #include "ospf6_asbr.h"
-#include "ospf6_intra.h"
 #include "ospf6_auto.h"
+#include "ospf6_intra.h"
 
 #include "ospf6_flood.h"
 #include "ospf6d.h"

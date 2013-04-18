@@ -37,6 +37,7 @@
 #include "ospf6_lsa.h"
 #include "ospf6_lsdb.h"
 
+#include "ospf6_auto.h"
 #include "ospf6_top.h"
 #include "ospf6_area.h"
 #include "ospf6_interface.h"
@@ -45,7 +46,6 @@
 #include "ospf6_asbr.h"
 #include "ospf6_abr.h"
 #include "ospf6_flood.h"
-#include "ospf6_auto.h"
 #include "ospf6d.h"
 
 
@@ -640,7 +640,7 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
     {  
       struct ospf6_ac_tlv_router_hardware_fingerprint *ac_tlv_rhwfp
 	= (struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_tlv_header;
-      u_int32_t *rhwf_char;
+      u_int8_t *rhwf_char;
       int i;
 
       snprintf (name, sizeof (name), "Router-Hardware-Fingerprint");
@@ -648,19 +648,23 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
       vty_out (vty, "    Type: %s%s", name, VNL);
       vty_out (vty, "    Length: %d%s", ntohs (ac_tlv_header->length), VNL);
 
-      vty_out (vty, "    Value: %010u%s", ac_tlv_rhwfp->value, VNL);
+      vty_out (vty, "    Value: %02x", ac_tlv_rhwfp->value.byte[0], VNL);
 
       /*TODO: Should be able to get rid of i */
-      rhwf_char = &ac_tlv_rhwfp->value + 1;
-      i = 4;
+      rhwf_char = &ac_tlv_rhwfp->value.byte[1];
+      i = 1;
       while (i < ntohs (ac_tlv_header->length)) 
       {
-	vty_out (vty, "           %010u%s", *rhwf_char, VNL);
+	if (i % 4 == 0) vty_out (vty, "%s          ", VNL);
+	vty_out (vty, " %02x", *rhwf_char);
 	rhwf_char++;
-	i += 4;
+	i += 1;
       }
 
-      current += sizeof (struct ospf6_ac_tlv_header) + ntohs (ac_tlv_header->length);
+      vty_out (vty, "%s", VNL);
+
+      /* XXX: Round to nearest 4 */
+      current += sizeof (struct ospf6_ac_tlv_header) + ((ntohs (ac_tlv_header->length) + 4 - 1) / 4) * 4;
     }
     else if (ac_tlv_header->type == htons(OSPF6_AC_TLV_AGGREGATED_PREFIX))
     {
@@ -684,7 +688,7 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
       vty_out (vty, "    Length: %d%s", ntohs (ac_tlv_header->length), VNL);
       vty_out (vty, "    Prefix: %s%s", prefix_str, VNL);
 
-      current += sizeof (struct ospf6_ac_tlv_header) + ntohs (ac_tlv_header->length);
+      current += sizeof (struct ospf6_ac_tlv_header) + ((ntohs (ac_tlv_header->length) + 4 - 1) / 4) * 4;
     }
     else if (ac_tlv_header->type == htons(OSPF6_AC_TLV_ASSIGNED_PREFIX))
     {
@@ -708,7 +712,7 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
       vty_out (vty, "    Length: %d%s", ntohs (ac_tlv_header->length), VNL);
       vty_out (vty, "    Prefix: %s%s", prefix_str, VNL);
 
-      current += sizeof (struct ospf6_ac_tlv_header) + ntohs (ac_tlv_header->length);
+      current += sizeof (struct ospf6_ac_tlv_header) + ((ntohs (ac_tlv_header->length) + 4 - 1) / 4) * 4;
     }
     else if (ac_tlv_header->type == htons(4))
     {
@@ -754,7 +758,7 @@ ospf6_ac_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
       vty_out (vty, "    Type: %d %s", ntohs (ac_tlv_header->type), VNL); 
       vty_out (vty, "    Length: %d %s", ntohs (ac_tlv_header->length), VNL); 
 
-      current += sizeof (struct ospf6_ac_tlv_header) + ntohs (ac_tlv_header->length);
+      current += sizeof (struct ospf6_ac_tlv_header) + ((ntohs (ac_tlv_header->length) + 4 - 1) / 4) *4;
     }
 
   }
@@ -802,7 +806,7 @@ ospf6_ac_lsa_originate (struct thread *thread)
   ac_tlv_rhwfp = (struct ospf6_ac_tlv_router_hardware_fingerprint *) current_tlv; 
   ac_tlv_rhwfp->header.type = htons (OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT);
   ac_tlv_rhwfp->header.length = htons (OSPF6_AC_TLV_RHWFP_LENGTH);
-  ac_tlv_rhwfp->value = ospf6_router_hardware_fingerprint ();
+  ac_tlv_rhwfp->value = ospf6_generate_router_hardware_fingerprint ();
 
   /* Step onto next tlv? */
   current_tlv = ++ac_tlv_rhwfp;

@@ -63,14 +63,14 @@ hash_hw_addr (u_int64_t hw_addr)
 }
 
 /* Generate a Router Hardware Fingerprint for zOSPF */
-u_int32_t
-ospf6_router_hardware_fingerprint (void)
+struct ospf6_router_hardware_fingerprint
+ospf6_generate_router_hardware_fingerprint (void)
 {
   struct listnode *node, *nnode;
   struct interface *current_interface;
-  u_int32_t fingerprint;
-
-  fingerprint = 0;
+  struct ospf6_router_hardware_fingerprint fingerprint;
+  
+  memset (&fingerprint, 0, sizeof(fingerprint));
 
   for (ALL_LIST_ELEMENTS (iflist, node, nnode, current_interface)) 
   {
@@ -82,9 +82,11 @@ ospf6_router_hardware_fingerprint (void)
     if (if_is_up (current_interface) && !if_is_loopback(current_interface))
     {
       u_int64_t hw_addr;
+      u_int32_t hw_addr_hash;
       hw_addr = hw_addr_to_long (current_interface->hw_addr, 
 	  current_interface->hw_addr_len);
-      fingerprint += hash_hw_addr (hw_addr);
+      hw_addr_hash = hash_hw_addr (hw_addr);
+      memcpy (&fingerprint.byte[current_interface->ifindex], &hw_addr_hash, 32);
     }
 #endif /* HAVE_STRUCT_SOCKADDR_DL */
   }
@@ -96,7 +98,7 @@ ospf6_router_hardware_fingerprint (void)
 void 
 ospf6_init_seed (void)
 {
-  ospf6->rid_seed = ospf6_router_hardware_fingerprint ();
+  ospf6->rid_seed = ospf6_generate_router_hardware_fingerprint ();
 }
 
 /* Generates a _new_ router id */
@@ -111,8 +113,8 @@ ospf6_generate_router_id (void)
 void 
 ospf6_set_router_id (u_int32_t rid)
 {
-  u_int32_t old_seed;
-  old_seed = 0;
+  struct ospf6_router_hardware_fingerprint old_seed;
+  memset (&old_seed, 0, sizeof (old_seed));
 
   /* Remove all timers */
   struct thread *t = master->timer.head;
@@ -266,16 +268,16 @@ ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header)
     ac_tlv_header = (struct ospf6_ac_tlv_header *) current;
     if (ac_tlv_header->type == OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT) 
     {
-      u_int32_t fingerprint;
+      struct ospf6_router_hardware_fingerprint fingerprint;
       struct ospf6_ac_tlv_router_hardware_fingerprint *ac_tlv_rhfp;
 
-      fingerprint = ospf6_router_hardware_fingerprint ();
+      fingerprint = ospf6_generate_router_hardware_fingerprint ();
       ac_tlv_rhfp = 
 	(struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_tlv_header;
 
       /* Check fingerprints, check length first since its variable */
-      if (ac_tlv_header->length == 4 
-	  && ac_tlv_rhfp->value == fingerprint)
+      if (ac_tlv_header->length == 32
+	  && R_HW_FP_CMP (&ac_tlv_rhfp->value, &fingerprint) == 0)
       {
 	/* Matching fingerprints implies true self origination*/
 	return 0;
@@ -283,7 +285,7 @@ ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header)
       else 
       {
 	/* If their fingerprint is smaller */
-	if (ac_tlv_header->length <= 4 
+	if (ac_tlv_header->length <= 32 
 	    && R_HW_FP_CMP (&ac_tlv_rhfp->value, &fingerprint) < 0)
 	{
 	  zlog_warn ("Other router must change Router-ID");
@@ -472,8 +474,6 @@ DEFUN (show_ipv6_assigned_prefix,
 
   ifname = argv[0];
   ifp = if_lookup_by_name (ifname);
-
-  assert (ifp);
 
   if (ifp == NULL){
     vty_out (vty, "No interface %s%s", ifname, VTY_NEWLINE);

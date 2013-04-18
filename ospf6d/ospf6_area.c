@@ -41,6 +41,7 @@
 #include "ospf6_top.h"
 #include "ospf6_area.h"
 #include "ospf6_interface.h"
+#include "ospf6_auto.h"
 #include "ospf6_intra.h"
 #include "ospf6_abr.h"
 #include "ospf6d.h"

@@ -164,7 +164,9 @@ create_ac_lsa (struct ospf6_area *oa,
 	ac_tlv_rhwfp = (struct ospf6_ac_tlv_router_hardware_fingerprint *) current_tlv; 
 	ac_tlv_rhwfp->header.type = OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT;
 	ac_tlv_rhwfp->header.length = OSPF6_AC_TLV_RHWFP_LENGTH;
-	ac_tlv_rhwfp->value = id; 
+	
+	/*TODO: FIX THIS */
+	memcpy (&ac_tlv_rhwfp->value, 0, 32); 
 
 	/* Step onto next tlv? */
 	current_tlv = ++ac_tlv_rhwfp;

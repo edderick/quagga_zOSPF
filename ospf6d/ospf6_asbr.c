@@ -44,6 +44,7 @@
 #include "ospf6_interface.h"
 #include "ospf6_neighbor.h"
 #include "ospf6_asbr.h"
+#include "ospf6_auto.h"
 #include "ospf6_intra.h"
 #include "ospf6_flood.h"
 #include "ospf6d.h"

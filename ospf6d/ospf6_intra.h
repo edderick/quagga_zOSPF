@@ -153,11 +153,11 @@ struct ospf6_ac_tlv_header
 /* TODO: May need to pull TLVs into a separate file */
 
 #define OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT       1U
-#define OSPF6_AC_TLV_RHWFP_LENGTH 4U
+#define OSPF6_AC_TLV_RHWFP_LENGTH 32U
 struct ospf6_ac_tlv_router_hardware_fingerprint
 {
   struct ospf6_ac_tlv_header header;
-  u_int32_t value;
+  struct ospf6_router_hardware_fingerprint value;
 };
 
 /* TBD-BY-ISNA-1 */

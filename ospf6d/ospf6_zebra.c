@@ -58,6 +58,7 @@ ospf6_router_id_update_zebra (int command, struct zclient *zclient,
 {
   struct prefix router_id;
   struct ospf6 *o = ospf6;
+  struct ospf6_router_hardware_fingerprint RHWF_NULL; 
 
   zebra_router_id_update_read(zclient->ibuf,&router_id);
   router_id_zebra = router_id.u.prefix4;
@@ -76,7 +77,7 @@ ospf6_router_id_update_zebra (int command, struct zclient *zclient,
     }
   }
 
-  if (ospf6->rid_seed == 0)
+  if (memcmp (&ospf6->rid_seed, &RHWF_NULL, sizeof (RHWF_NULL)))
   {
       ospf6_init_seed ();
   }

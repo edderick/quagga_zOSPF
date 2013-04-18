@@ -37,6 +37,7 @@
 #include "ospf6_route.h"
 #include "ospf6_area.h"
 #include "ospf6_spf.h"
+#include "ospf6_auto.h"
 #include "ospf6_intra.h"
 #include "ospf6_interface.h"
 #include "ospf6d.h"

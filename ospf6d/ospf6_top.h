@@ -23,6 +23,7 @@
 #define OSPF6_TOP_H
 
 #include "routemap.h"
+#include "ospf6_auto.h" /*XXX: Can't be bothered to sort out dependencies again */
 
 /* OSPFv3 top level data structure */
 struct ospf6
@@ -54,8 +55,7 @@ struct ospf6
   u_int32_t external_id;
 
   /* Autoconf */
-  u_int32_t hardware_fingerprint; /* XXX: Currently unused */
-  u_int32_t rid_seed;
+  struct ospf6_router_hardware_fingerprint rid_seed;
 
   /* redistribute route-map */
   struct
