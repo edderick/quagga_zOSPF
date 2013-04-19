@@ -162,6 +162,64 @@ struct test_case test_cases[] =
   }
 };
 
+#define COND_AGG_PREFIX	      0
+#define COND_ASS_PREFIX_IS    1
+#define COND_ASS_PREFIX_ISNT  2
+#define COND_IS_PENDING	      3
+#define COND_IS_DEPRECATING   4
+
+struct condition 
+{
+  int type;
+  char prefix[64];
+  int ifindex;
+};
+
+struct expected_value 
+{
+  int num_of_interfaces;
+  int num_of_aggregated_prefixes;
+  int num_of_assigned_prefixes;
+  int num_of_assigned_prefixes_on_interface[10];
+  
+  int num_of_conditions;
+  struct condition conditions[10];
+};
+
+struct expected_value expected_values[] = 
+{
+  /* Expected Value for Testcase 0 */
+  {0, 0, 0, {}, 0, {}},
+  /* Expected Value for Testcase 1 */
+  {0, 1, 0, {}, 1, 
+    {
+      {COND_AGG_PREFIX, "fc00/48", 0}
+    }
+  }, 
+  /* Expected Value for Testcase 2 */
+  {0, 2, 0, {}, 2, 
+    {
+      {COND_AGG_PREFIX, "fc00/48", 0},
+      {COND_AGG_PREFIX, "fc01/48", 0}
+    }
+  },
+  /* Expected Value for Testcase 3 */
+  {1, 1, 1, {1}, 2,
+    {
+      {COND_AGG_PREFIX, "fc00/48", 0},
+      {COND_IS_PENDING, "", 0}
+    }
+  },
+  /* Expected Value for Testcase 4 */
+  {2, 1, 3, {2, 1}, 4,
+    {
+      {COND_AGG_PREFIX, "fc00/47", 0},
+      {COND_IS_DEPRECATING, "fc00:0:0:1::/64", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:3::/64", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:2::/64", 0},
+    }
+  }
+};
 /* A modified version of the AC-LSA origination code.
    Used to generated AC-LSAs. */
   static struct ospf6_lsa *
