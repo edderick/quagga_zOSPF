@@ -1349,12 +1349,15 @@ process_prefix_interface_pair (struct ospf6_aggregated_prefix *agp,
 	&& ospf6->router_id > highest_assigned_prefix->assigning_router_id) 
       || highest_assigned_prefix == NULL)
   {
-    highest_assigned_prefix = find_own_prefix_assignment (agp, ifp, aspl);
+    struct ospf6_assigned_prefix *own_assignment;
 
-    if (highest_assigned_prefix != NULL)
-    {
-      has_highest_assignment = 1;
-    }
+    own_assignment = find_own_prefix_assignment (agp, ifp, aspl);
+    
+    if (own_assignment != NULL)
+      {
+	highest_assigned_prefix = own_assignment;
+	has_highest_assignment = 1;
+      }
   }
 
   list_delete (active_neigbor_list);
