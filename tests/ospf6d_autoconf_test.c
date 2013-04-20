@@ -43,7 +43,7 @@
 #define OK VT100_GREEN "OK" VT100_RESET
 #define FAILED VT100_RED "failed" VT100_RESET
 
-#define OWN_ID 0
+#define OWN_ID 5
 #define CONNECTED_IF_ID 0
 #define NOT_NEIGHBOR -1
 
@@ -92,7 +92,7 @@ struct lsa
 
 struct test_case 
 {
-  int number;
+  int number; /*TODO: May be possible to renove this */
   int num_of_lsas;
   int num_of_interfaces;
   struct lsa lsa[10]; /* XXX */
@@ -128,14 +128,14 @@ struct test_case test_cases[] =
     2, 2,
     {
       {OWN_ID, 0, 1, {"fc00::/48"}, 2, {"fc00:0:0:1::/64", "fc00:0:0:2::/64"}, {0, 1}},
-      {1, 0, 0, {}, 1, {"fc00:0:0:3::/64"}, {CONNECTED_IF_ID}}
+      {OWN_ID + 1, 0, 0, {}, 1, {"fc00:0:0:3::/64"}, {CONNECTED_IF_ID}}
     }
   },
   {/* Test Case: */ 5,
     2, 2,
     {
       {OWN_ID, 0, 1, {"fc00::/48"}, 2, {"fc00:0:0:1::/64", "fc00:0:0:2::/64"}, {0, 1}},
-      {1, 0, 1, {"fc00:1::/48"}, 1, {"fc00:0:0:3::/64"}, {CONNECTED_IF_ID}}
+      {OWN_ID + 1, 0, 1, {"fc00:1::/48"}, 1, {"fc00:0:0:3::/64"}, {CONNECTED_IF_ID}}
     }
   },
   {/* Test Case: */ 6,
@@ -193,30 +193,68 @@ struct expected_value expected_values[] =
   /* Expected Value for Testcase 1 */
   {0, 1, 0, {}, 1, 
     {
-      {COND_AGG_PREFIX, "fc00/48", 0}
+      {COND_AGG_PREFIX, "fc00::/48", 0}
     }
   }, 
   /* Expected Value for Testcase 2 */
   {0, 2, 0, {}, 2, 
     {
-      {COND_AGG_PREFIX, "fc00/48", 0},
-      {COND_AGG_PREFIX, "fc01/48", 0}
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_AGG_PREFIX, "fc01::/48", 0}
     }
   },
   /* Expected Value for Testcase 3 */
   {1, 1, 1, {1}, 2,
     {
-      {COND_AGG_PREFIX, "fc00/48", 0},
-      {COND_IS_PENDING, "", 0}
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_IS_PENDING, "fc00::/48", 0}
     }
   },
   /* Expected Value for Testcase 4 */
   {2, 1, 3, {2, 1}, 4,
     {
-      {COND_AGG_PREFIX, "fc00/47", 0},
+      {COND_AGG_PREFIX, "fc00::/48", 0},
       {COND_IS_DEPRECATING, "fc00:0:0:1::/64", 0},
       {COND_ASS_PREFIX_IS, "fc00:0:0:3::/64", 0},
-      {COND_ASS_PREFIX_IS, "fc00:0:0:2::/64", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:2::/64", 1},
+    }
+  },
+  /* Expected Value for Testcase 5 */
+  {2, 2, 4, {2, 2}, 6,
+    {
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_AGG_PREFIX, "fc00:1::/48", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:3::/64", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:2::/64", 1},
+      {COND_IS_DEPRECATING, "fc00:0:0:1::/64", 0},
+      {COND_IS_PENDING, "fc00:1::/48", 1}
+    }
+  },
+  /* Expected Value for Testcase 6 */
+  {2, 1, 2, {1, 1}, 3,
+    {
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:1::/64", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:2::/64", 1}
+    }
+  },
+  /* Expected Value for Testcase 7 */
+  {2, 1, 2, {1, 1}, 3,
+    {
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:1::/64", 0}, 
+      {COND_IS_PENDING, "fc00::/48", 1}
+    }
+  },
+  /* Expected Value for Testcase 8 */
+  {2, 2, 4, {2, 2}, 2, 
+    {
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_AGG_PREFIX, "fc01::/48", 1},
+      {COND_IS_PENDING, "fc00::/48", 0},
+      {COND_IS_PENDING, "fc00::/48", 1}, 
+      {COND_IS_PENDING, "fc01::/48", 0},
+      {COND_IS_PENDING, "fc01::/48", 1}
     }
   }
 };
@@ -377,7 +415,7 @@ setup (void)
   ospf6 = ospf6_create ();
   backbone_area = ospf6_area_create (0, ospf6);
 
-  ospf6->router_id = 0;
+  ospf6->router_id = OWN_ID;
 
   ospf6_lsa_init ();
   ospf6_intra_init ();
@@ -405,6 +443,270 @@ reset (void)
 
   list_delete (backbone_area->if_list);
   backbone_area->if_list = list_new ();
+}
+
+#define SUCCESS 0;
+#define ERROR_NUM_OF_INTERFACES 1;
+#define ERROR_NUM_OF_AGGREGATED_PREFIXES 2;
+#define ERROR_NUM_OF_TOTAL_ASSIGNED_PREFIXES 3;
+#define ERROR_NUM_OF_INTERFACE_ASSIGNED_PREFIXES 4;
+
+#define ERROR_COND_AGGREGATE_PREFIX 5;
+#define ERROR_COND_ASSIGNED_PREFIX_IS 6;
+#define ERROR_COND_ASSIGNED_PREFIX_ISNT 7;
+#define ERROR_COND_PENDING 8;
+#define ERROR_COND_DEPRECATING 9;
+
+static int
+check_test_case (struct test_case *test_case)
+{
+  
+  struct expected_value *expected_value;
+  int i, total_assigned_prefixes; 
+
+  expected_value = &expected_values[test_case->number];
+
+  if (expected_value->num_of_interfaces != iflist->count)
+  {
+    printf ("Number of interfaces incorrect\n");
+    return ERROR_NUM_OF_INTERFACES;
+  }
+
+  if (expected_value->num_of_aggregated_prefixes != ospf6->aggregated_prefix_list->count)
+  {
+    printf ("Number of aggregated preifixes incorrect\n");
+    return ERROR_NUM_OF_AGGREGATED_PREFIXES;
+  }
+
+  total_assigned_prefixes = 0;
+
+  for (i = 0; i < iflist->count; i++)
+  {
+    struct listnode *node, *nnode; 
+    struct ospf6_interface *oi;
+
+    oi = ospf6_interface_lookup_by_ifindex (i);
+
+    total_assigned_prefixes += oi->assigned_prefix_list->count;
+  
+    if (expected_value->num_of_assigned_prefixes_on_interface[i] !=
+	oi->assigned_prefix_list->count)
+    {
+      printf ("Number of prefixes assigned to interface %d incorrect\n", i);
+      return ERROR_NUM_OF_INTERFACE_ASSIGNED_PREFIXES;
+    }
+  }
+  
+  if (expected_value->num_of_assigned_prefixes != total_assigned_prefixes)
+  {
+    printf ("Error in the total number of assigned prefixes\n");
+    return ERROR_NUM_OF_TOTAL_ASSIGNED_PREFIXES;
+  }
+
+  for (i = 0; i < expected_value->num_of_conditions; i++)
+  {
+    struct condition *condition;
+
+    condition = &expected_value->conditions[i];
+
+    switch (condition->type)
+    {
+      case COND_AGG_PREFIX:
+	{
+	  int found;
+	  struct listnode *node, *nnode; 
+	  struct ospf6_aggregated_prefix *agp;
+  	  struct prefix prefix; 
+	  
+	  found = 0;
+	  str2prefix (&condition->prefix, &prefix);
+	  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nnode, agp)) 
+	  {
+	    if (prefix_same (&agp->prefix, &prefix)) 
+	    {
+	      found = 1;
+	      break;
+	    }
+	  }
+	  if (!found)
+	  {
+	    printf ("Aggregated prefixes incorrect\n");
+	    return ERROR_COND_AGGREGATE_PREFIX;
+	  }
+	  break;
+	}
+      case COND_ASS_PREFIX_IS:
+	{
+	  int found;
+	  struct listnode *node, *nnode;
+	  struct ospf6_assigned_prefix *asp;
+	  struct ospf6_interface *oi;
+	  struct prefix prefix; 
+
+	  found = 0;
+	  str2prefix (&condition->prefix, &prefix);
+
+	  oi = ospf6_interface_lookup_by_ifindex (condition->ifindex);
+
+	  for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nnode, asp))
+	  {
+	    if (prefix_same (&asp->prefix, &prefix))
+	    {
+	      found = 1;
+	      break;
+	    }
+	  }
+	  if (!found)
+	  {
+	    printf ("Assigned prefix not found\n");
+	    return ERROR_COND_ASSIGNED_PREFIX_IS;
+	  }
+
+	  break;
+	}
+      case COND_ASS_PREFIX_ISNT:
+	{
+	  int found;
+	  struct listnode *node, *nnode;
+	  struct ospf6_assigned_prefix *asp;
+	  struct ospf6_interface *oi;
+	  struct prefix prefix; 
+
+	  found = 0;
+	  str2prefix (&condition->prefix, &prefix);
+
+	  oi = ospf6_interface_lookup_by_ifindex (condition->ifindex);
+
+	  for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nnode, asp))
+	  {
+	    if (prefix_same (&asp->prefix, &prefix))
+	    {
+	      found = 1;
+	      break;
+	    }
+	  }
+	  if (found)
+	  {
+	    printf ("Prohibited assigned prefix found\n");
+	    return ERROR_COND_ASSIGNED_PREFIX_ISNT;
+	  }
+	  break;
+	}
+      case COND_IS_PENDING:
+	{
+	  int found;
+	  struct listnode *node, *nnode;
+	  struct ospf6_assigned_prefix *asp;
+	  struct ospf6_interface *oi;
+	  struct prefix prefix; 
+
+	  found = 0;
+	  str2prefix (&condition->prefix, &prefix);
+
+	  oi = ospf6_interface_lookup_by_ifindex (condition->ifindex);
+
+	  for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nnode, asp))
+	  {
+	    if (prefix_contains (&prefix, &asp->prefix))
+	    {
+	      if (asp->pending_thread)
+	      {
+		found = 1;
+	      }
+	      break;
+	    }
+	  }
+	  if (!found)
+	  {
+	    printf ("Assigned prefix was not pending\n");
+	    return ERROR_COND_PENDING;
+	  }
+	  break;
+	}
+      case COND_IS_DEPRECATING:
+	{
+	  int found;
+	  struct listnode *node, *nnode;
+	  struct ospf6_assigned_prefix *asp;
+	  struct ospf6_interface *oi;
+	  struct prefix prefix; 
+
+	  found = 0;
+	  str2prefix (&condition->prefix, &prefix);
+
+	  oi = ospf6_interface_lookup_by_ifindex (condition->ifindex);
+
+	  for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nnode, asp))
+	  {
+	    if (prefix_same (&asp->prefix, &prefix))
+	    {
+	      if (asp->deprecation_thread)
+	      {
+		found = 1;
+	      }
+	      break;
+	    }
+	  }
+	  if (!found)
+	  {
+	      printf ("Assigned prefix was not deprecating\n");
+	      return ERROR_COND_DEPRECATING;
+	  }
+	  break;
+	}
+    }
+  }
+
+  return SUCCESS;
+}
+
+static void 
+print_details (void)
+{
+    int i, assigned_prefix_count;
+    struct listnode *node, *nnode; 
+    struct ospf6_aggregated_prefix  *agp;
+
+    assigned_prefix_count = 0;	
+
+    printf("Toal interface count: %d \n", iflist->count);
+
+    for (ALL_LIST_ELEMENTS(ospf6->aggregated_prefix_list, node, nnode, agp))
+    {
+	char buf[64];
+	prefix2str (&agp->prefix, buf, 64);
+	printf (" Aggregated Prefix: %s\n", buf);
+    }
+    
+    printf("Total Aggregated Prefix count: %d \n", ospf6->aggregated_prefix_list->count);
+
+    for (i = 0; i < iflist->count; i++)
+    {
+      struct ospf6_interface *oi;	
+      struct ospf6_assigned_prefix  *ap;
+      
+      oi = ospf6_interface_lookup_by_ifindex (i);
+
+      printf(" eth%d's Assigned Prefix count: %d\n", i, oi->assigned_prefix_list->count); 
+
+      for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nnode, ap))
+      {
+	char buf[64];
+	prefix2str (&ap->prefix, buf, 64);
+	printf ("  Assigned Prefix: %s\n", buf);
+	if (ap->pending_thread) printf ("   Pending Thread\n");
+	if (!ap->is_valid) printf ("   Not Valid\n");
+	if (ap->deprecation_thread) printf ("   Deprecation Thread\n");
+      }
+      
+      assigned_prefix_count += oi->assigned_prefix_list->count;
+    }
+
+    printf("Total Assigned Prefix count: %d \n", assigned_prefix_count);
+
+    if (ospf6->ula_generation_thread) printf ("Generating a ULA\n");
+
+    printf("\n");
 }
 
   static void 
@@ -449,65 +751,19 @@ do_test_case (struct test_case *test_case)
   /* LSDB has been filled - Run the algorithm */
   ospf6_assign_prefixes ();
 
-  if (ospf6->aggregated_prefix_list == NULL)
+  if (check_test_case (test_case) != 0)
   {
-    printf ("Testcase %d: \n", test_case->number);
-
-    printf (FAILED "\n");
+    printf ("Testcase %d: ", test_case->number);
+    printf (FAILED "\n\n");
 
     fail_count ++;
   }	
   else 
   {
-    int assigned_prefix_count;
-    struct listnode *node, *nnode; 
-    struct ospf6_aggregated_prefix  *agp;
-
-    assigned_prefix_count = 0;	
-
     printf ("Testcase %d ", test_case->number);
     printf (OK "\n");
-
-
-    printf("Toal interface count: %d \n", iflist->count);
-
-    for (ALL_LIST_ELEMENTS(ospf6->aggregated_prefix_list, node, nnode, agp))
-    {
-	char buf[64];
-	prefix2str (&agp->prefix, buf, 64);
-	printf (" Aggregated Prefix: %s\n", buf);
-    }
     
-    printf("Total Aggregated Prefix count: %d \n", ospf6->aggregated_prefix_list->count);
-
-    for (i = 0; i < iflist->count; i++)
-    {
-      struct ospf6_interface *oi;	
-      struct ospf6_assigned_prefix  *ap;
-      
-      oi = ospf6_interface_lookup_by_ifindex (i);
-
-      printf(" eth%d's Assigned Prefix count: %d\n", i, oi->assigned_prefix_list->count); 
-
-      for (ALL_LIST_ELEMENTS (oi->assigned_prefix_list, node, nnode, ap))
-      {
-	char buf[64];
-	prefix2str (&ap->prefix, buf, 64);
-	printf ("  Assigned Prefix: %s\n", buf);
-	if (ap->pending_thread) printf ("   Pending Thread\n");
-	if (!ap->is_valid) printf ("   Not Valid\n");
-	if (ap->deprecation_thread) printf ("   Deprecation Thread\n");
-      }
-      
-      assigned_prefix_count += oi->assigned_prefix_list->count;
-    }
-
-    printf("Total Assigned Prefix count: %d \n", assigned_prefix_count);
-
-    if (ospf6->ula_generation_thread) printf ("Generating a ULA\n");
-
-    printf("\n");
-
+    print_details ();
   }
 }
 
