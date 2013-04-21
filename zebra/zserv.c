@@ -914,14 +914,14 @@ zread_ipv4_import_lookup (struct zserv *client, u_short length)
 static int 
 source_table_number (struct prefix_ipv6 *src)
 {
-  return 5;
-  
   int i, total;
+  total = 0;
   for (i = 0; i < 16; i++)
   {
     total += src->prefix.s6_addr[i];
   }
-  return total;
+
+  return total % 255;
 }
 
 /* Zebra server IPv6 prefix add function. */
@@ -992,8 +992,11 @@ zread_ipv6_add (struct zserv *client, u_short length)
    
   table = source_table_number (&src);
 
-  prefix2str (&dst, prefix_str, 64);
-  snprintf (buf, 200, "./create_rule.sh %s %d", prefix_str, table);
+  prefix2str (&src, prefix_str, 64);
+  if (table == 0)
+    snprintf (buf, 200, "./create_rule.sh %s %s", prefix_str, "default");
+  else
+    snprintf (buf, 200, "./create_rule.sh %s %d", prefix_str, table);
   system (buf); 
 
   if (IN6_IS_ADDR_UNSPECIFIED (&nexthop))

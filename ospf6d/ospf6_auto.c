@@ -1737,9 +1737,14 @@ ula_generator (struct thread *thread)
   new_ula_prefix->prefix.u.prefix6 = *addr;
 
   /* Source hack */
+
+  struct in6_addr zero_addr; 
+
+  memset (&zero_addr, 0, sizeof (struct in6_addr));
+
   new_ula_prefix->is_for.family = AF_INET6;
   new_ula_prefix->is_for.prefixlen = 0;
-  new_ula_prefix->is_for.u.prefix6 = *addr;
+  new_ula_prefix->is_for.u.prefix6 = zero_addr;
   
   listnode_add (ospf6->aggregated_prefix_list, new_ula_prefix);
   originate_new_ac_lsa ();

@@ -927,7 +927,7 @@ ospf6_prefixes_examin
     current = (struct ospf6_prefix *) ((caddr_t) current + requested_pfx_bytes);
     real_num_pfxs++;
   }
-  if (real_num_pfxs != req_num_pfxs)
+  if (real_num_pfxs / 2 != req_num_pfxs)
   {
     if (IS_OSPF6_DEBUG_MESSAGE (OSPF6_MESSAGE_TYPE_UNKNOWN, RECV))
       zlog_debug ("%s: IPv6 prefix number mismatch (%u required, %u real)",
