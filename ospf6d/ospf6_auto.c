@@ -33,16 +33,17 @@ static void ospf6_read_associated_prefixes_from_file (struct ospf6_interface *if
 static u_int64_t
 hw_addr_to_long (const u_char *hw_addr, const int hw_addr_len)
 {
+  u_int64_t long_result;
   u_int8_t *result;
 
-  result = malloc (8);
+  result = &long_result;
 
   if (hw_addr_len != 8)
   {
-    memcpy (result, hw_addr, 4);
-    result[4] = 0xFF;
-    result[5] = 0xFE;
-    memcpy (result + 6, hw_addr, 4);
+    memcpy (result, hw_addr, 3);
+    result[3] = 0xFF;
+    result[4] = 0xFE;
+    memcpy (result + 5, hw_addr, 3);
 
     /* flip EUI 64 bit; */
     result[0] = result[0] ^ 0x20;
@@ -52,7 +53,7 @@ hw_addr_to_long (const u_char *hw_addr, const int hw_addr_len)
     memcpy (result, hw_addr, 8);
   }
 
-  return *result;
+  return long_result;
 }
 
 /* Can be replaced with a more sophisticated hash if needed */
@@ -69,7 +70,10 @@ ospf6_generate_router_hardware_fingerprint (void)
   struct listnode *node, *nnode;
   struct interface *current_interface;
   struct ospf6_router_hardware_fingerprint fingerprint;
-  
+  int offset;
+
+  offset = 0;
+
   memset (&fingerprint, 0, sizeof(fingerprint));
 
   for (ALL_LIST_ELEMENTS (iflist, node, nnode, current_interface)) 
@@ -86,7 +90,8 @@ ospf6_generate_router_hardware_fingerprint (void)
       hw_addr = hw_addr_to_long (current_interface->hw_addr, 
 	  current_interface->hw_addr_len);
       hw_addr_hash = hash_hw_addr (hw_addr);
-      memcpy (&fingerprint.byte[current_interface->ifindex], &hw_addr_hash, 32);
+      memcpy (&fingerprint.byte[offset], &hw_addr_hash, 4);
+      offset += 4;
     }
 #endif /* HAVE_STRUCT_SOCKADDR_DL */
   }
