@@ -124,6 +124,7 @@ struct ospf6_route
 
   /* Destination ID */
   struct prefix prefix;
+  struct prefix source; 
 
   /* Time */
   struct timeval installed;

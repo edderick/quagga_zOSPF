@@ -33,16 +33,17 @@ static void ospf6_read_associated_prefixes_from_file (struct ospf6_interface *if
 static u_int64_t
 hw_addr_to_long (const u_char *hw_addr, const int hw_addr_len)
 {
+  u_int64_t long_result;
   u_int8_t *result;
 
-  result = malloc (8);
+  result = &long_result;
 
   if (hw_addr_len != 8)
   {
-    memcpy (result, hw_addr, 4);
-    result[4] = 0xFF;
-    result[5] = 0xFE;
-    memcpy (result + 6, hw_addr, 4);
+    memcpy (result, hw_addr, 3);
+    result[3] = 0xFF;
+    result[4] = 0xFE;
+    memcpy (result + 5, hw_addr, 3);
 
     /* flip EUI 64 bit; */
     result[0] = result[0] ^ 0x20;
@@ -52,7 +53,7 @@ hw_addr_to_long (const u_char *hw_addr, const int hw_addr_len)
     memcpy (result, hw_addr, 8);
   }
 
-  return *result;
+  return long_result;
 }
 
 /* Can be replaced with a more sophisticated hash if needed */
@@ -69,7 +70,10 @@ ospf6_generate_router_hardware_fingerprint (void)
   struct listnode *node, *nnode;
   struct interface *current_interface;
   struct ospf6_router_hardware_fingerprint fingerprint;
-  
+  int offset;
+
+  offset = 0;
+
   memset (&fingerprint, 0, sizeof(fingerprint));
 
   for (ALL_LIST_ELEMENTS (iflist, node, nnode, current_interface)) 
@@ -86,7 +90,8 @@ ospf6_generate_router_hardware_fingerprint (void)
       hw_addr = hw_addr_to_long (current_interface->hw_addr, 
 	  current_interface->hw_addr_len);
       hw_addr_hash = hash_hw_addr (hw_addr);
-      memcpy (&fingerprint.byte[current_interface->ifindex], &hw_addr_hash, 32);
+      memcpy (&fingerprint.byte[offset], &hw_addr_hash, 4);
+      offset += 4; 
     }
 #endif /* HAVE_STRUCT_SOCKADDR_DL */
   }
@@ -341,6 +346,10 @@ DEFUN (ipv6_allocate_prefix,
 
   aggregated_prefix = malloc (sizeof (struct ospf6_aggregated_prefix));
 
+  memset (aggregated_prefix, 0, sizeof (struct ospf6_aggregated_prefix)); 
+
+  aggregated_prefix->is_for.family = AF_INET6;
+
   aggregated_prefix->prefix = prefix;
   aggregated_prefix->source = OSPF6_PREFIX_SOURCE_CONFIGURED; 
   aggregated_prefix->advertising_router_id = ospf6->router_id;
@@ -353,6 +362,49 @@ DEFUN (ipv6_allocate_prefix,
 
   return CMD_SUCCESS;
 }
+
+/* Allocate a prefix */
+DEFUN (ipv6_source_allocate_prefix,
+    ipv6_source_allocate_prefix_cmd,
+    "ipv6 source-allocate-prefix X:X::X:X/M X:X::X:X/M",
+    OSPF6_STR)
+{
+  struct prefix prefix, source;
+  struct listnode *node, *nnode;
+  struct ospf6_aggregated_prefix *aggregated_prefix; 
+
+  str2prefix (argv[0], &prefix);
+  str2prefix (argv[1], &source);
+
+  /* Check it isn't already in use */
+  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, 
+	node, nnode, aggregated_prefix))
+  {
+    if (IPV6_ADDR_SAME (&aggregated_prefix->prefix.u.prefix, &prefix.u.prefix))
+    {
+      return CMD_SUCCESS;
+    }
+  }
+
+  aggregated_prefix = malloc (sizeof (struct ospf6_aggregated_prefix));
+
+  memset (aggregated_prefix, 0, sizeof (struct ospf6_aggregated_prefix)); 
+
+  aggregated_prefix->is_for = source;
+
+  aggregated_prefix->prefix = prefix;
+  aggregated_prefix->source = OSPF6_PREFIX_SOURCE_CONFIGURED; 
+  aggregated_prefix->advertising_router_id = ospf6->router_id;
+
+  listnode_add (ospf6->aggregated_prefix_list, aggregated_prefix); 
+
+  zlog_warn ("Allocating %s", argv[0]);
+
+  originate_new_ac_lsa ();
+
+  return CMD_SUCCESS;
+}
+
 
 /* Remove an allocated prefix */
 DEFUN (no_ipv6_allocate_prefix,
@@ -572,6 +624,12 @@ handle_aggregated_prefix_tlv (char *current, struct ospf6_lsa *current_lsa)
   ag_prefix->prefix.family = AF_INET6;
   ag_prefix->prefix.prefixlen = ac_tlv_ag_p->prefix_length;
   ag_prefix->prefix.u.prefix6 = ac_tlv_ag_p->prefix;
+  
+  /* Source hack */ 
+  ag_prefix->is_for.family = AF_INET6;
+  ag_prefix->is_for.prefixlen = ac_tlv_ag_p->source_length;
+  ag_prefix->is_for.u.prefix6 = ac_tlv_ag_p->source;
+
   ag_prefix->advertising_router_id = current_lsa->header->adv_router;
   ag_prefix->source = lookup_aggregated_prefix_source (ag_prefix);
 
@@ -1678,6 +1736,11 @@ ula_generator (struct thread *thread)
   new_ula_prefix->prefix.prefixlen = 48;
   new_ula_prefix->prefix.u.prefix6 = *addr;
 
+  /* Source hack */
+  new_ula_prefix->is_for.family = AF_INET6;
+  new_ula_prefix->is_for.prefixlen = 0;
+  new_ula_prefix->is_for.u.prefix6 = *addr;
+  
   listnode_add (ospf6->aggregated_prefix_list, new_ula_prefix);
   originate_new_ac_lsa ();
 
@@ -1891,11 +1954,39 @@ ospf6_schedule_assign_prefixes (void)
   }
 }
 
+struct prefix check_is_for (struct prefix prefix)
+{
+  struct listnode *node, *nnode; 
+  struct ospf6_aggregated_prefix *agp;
+  struct prefix *p;
+
+
+  for (ALL_LIST_ELEMENTS (ospf6->aggregated_prefix_list, node, nnode, agp))
+  {
+    if (prefix_contains (&agp->prefix, &prefix))
+    {
+      zlog_warn ("Got one");
+      return agp->is_for;
+    }
+  }
+
+
+  p = malloc (sizeof (struct prefix));
+  memset (p, 0, sizeof (struct prefix));
+
+  p->family = AF_INET6;
+
+  zlog_warn ("no container");
+
+  return  *p;
+}
+
 /* Install autoconf related commands. */
 void 
 ospf6_auto_init (void) 
 {
   install_element (CONFIG_NODE, &ipv6_allocate_prefix_cmd);
+  install_element (CONFIG_NODE, &ipv6_source_allocate_prefix_cmd);
   install_element (CONFIG_NODE, &no_ipv6_allocate_prefix_cmd);
 
   install_element (VIEW_NODE, &show_ipv6_allocated_prefix_cmd); 

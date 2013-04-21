@@ -910,6 +910,20 @@ zread_ipv4_import_lookup (struct zserv *client, u_short length)
 }
 
 #ifdef HAVE_IPV6
+
+static int 
+source_table_number (struct prefix_ipv6 *src)
+{
+  return 5;
+  
+  int i, total;
+  for (i = 0; i < 16; i++)
+  {
+    total += src->prefix.s6_addr[i];
+  }
+  return total;
+}
+
 /* Zebra server IPv6 prefix add function. */
 static int
 zread_ipv6_add (struct zserv *client, u_short length)
@@ -919,7 +933,9 @@ zread_ipv6_add (struct zserv *client, u_short length)
   struct zapi_ipv6 api;
   struct in6_addr nexthop;
   unsigned long ifindex;
-  struct prefix_ipv6 p;
+  struct prefix_ipv6 dst, src;
+  int table;
+  char buf[200], prefix_str[64];
   
   s = client->ibuf;
   ifindex = 0;
@@ -932,11 +948,16 @@ zread_ipv6_add (struct zserv *client, u_short length)
   api.safi = stream_getw (s);
 
   /* IPv4 prefix. */
-  memset (&p, 0, sizeof (struct prefix_ipv6));
-  p.family = AF_INET6;
-  p.prefixlen = stream_getc (s);
-  stream_get (&p.prefix, s, PSIZE (p.prefixlen));
+  memset (&dst, 0, sizeof (struct prefix_ipv6));
+  dst.family = AF_INET6;
+  dst.prefixlen = stream_getc (s);
+  stream_get (&dst.prefix, s, PSIZE (dst.prefixlen));
 
+  memset (&src, 0, sizeof (struct prefix_ipv6));
+  src.family = AF_INET6;
+  src.prefixlen = stream_getc (s);
+  stream_get (&src.prefix, s, PSIZE (src.prefixlen));
+  
   /* Nexthop, ifindex, distance, metric. */
   if (CHECK_FLAG (api.message, ZAPI_MESSAGE_NEXTHOP))
     {
@@ -968,12 +989,18 @@ zread_ipv6_add (struct zserv *client, u_short length)
     api.metric = stream_getl (s);
   else
     api.metric = 0;
-    
+   
+  table = source_table_number (&src);
+
+  prefix2str (&dst, prefix_str, 64);
+  snprintf (buf, 200, "./create_rule.sh %s %d", prefix_str, table);
+  system (buf); 
+
   if (IN6_IS_ADDR_UNSPECIFIED (&nexthop))
-    rib_add_ipv6 (api.type, api.flags, &p, NULL, ifindex, zebrad.rtm_table_default, api.metric,
+    rib_add_ipv6 (api.type, api.flags, &dst, NULL, ifindex, table, api.metric,
 		  api.distance, api.safi);
   else
-    rib_add_ipv6 (api.type, api.flags, &p, &nexthop, ifindex, zebrad.rtm_table_default, api.metric,
+    rib_add_ipv6 (api.type, api.flags, &dst, &nexthop, ifindex, table, api.metric,
 		  api.distance, api.safi);
   return 0;
 }
@@ -987,8 +1014,10 @@ zread_ipv6_delete (struct zserv *client, u_short length)
   struct zapi_ipv6 api;
   struct in6_addr nexthop;
   unsigned long ifindex;
-  struct prefix_ipv6 p;
-  
+  struct prefix_ipv6 dst, src;
+  int table;
+  char buf[200], prefix_str[64];
+
   s = client->ibuf;
   ifindex = 0;
   memset (&nexthop, 0, sizeof (struct in6_addr));
@@ -1000,10 +1029,16 @@ zread_ipv6_delete (struct zserv *client, u_short length)
   api.safi = stream_getw (s);
 
   /* IPv4 prefix. */
-  memset (&p, 0, sizeof (struct prefix_ipv6));
-  p.family = AF_INET6;
-  p.prefixlen = stream_getc (s);
-  stream_get (&p.prefix, s, PSIZE (p.prefixlen));
+  memset (&dst, 0, sizeof (struct prefix_ipv6));
+  dst.family = AF_INET6;
+  dst.prefixlen = stream_getc (s);
+  stream_get (&dst.prefix, s, PSIZE (dst.prefixlen));
+
+  /* IPv4 prefix. */
+  memset (&src, 0, sizeof (struct prefix_ipv6));
+  src.family = AF_INET6;
+  src.prefixlen = stream_getc (s);
+  stream_get (&src.prefix, s, PSIZE (src.prefixlen));
 
   /* Nexthop, ifindex, distance, metric. */
   if (CHECK_FLAG (api.message, ZAPI_MESSAGE_NEXTHOP))
@@ -1035,11 +1070,17 @@ zread_ipv6_delete (struct zserv *client, u_short length)
     api.metric = stream_getl (s);
   else
     api.metric = 0;
-    
+   
+  table = source_table_number (&src);
+
+  prefix2str (&dst, prefix_str, 64);
+  snprintf (buf, 200, "./delete_rule.sh %s %d", prefix_str, table);
+  system (buf); 
+  
   if (IN6_IS_ADDR_UNSPECIFIED (&nexthop))
-    rib_delete_ipv6 (api.type, api.flags, &p, NULL, ifindex, client->rtm_table, api.safi);
+    rib_delete_ipv6 (api.type, api.flags, &dst, NULL, ifindex, table, api.safi);
   else
-    rib_delete_ipv6 (api.type, api.flags, &p, &nexthop, ifindex, client->rtm_table, api.safi);
+    rib_delete_ipv6 (api.type, api.flags, &dst, &nexthop, ifindex, table, api.safi);
   return 0;
 }
 

@@ -512,6 +512,17 @@ ospf6_link_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
       inet_ntop (AF_INET6, &in6, buf, sizeof (buf));
       vty_out (vty, "     Prefix: %s/%d%s",
                buf, prefix->prefix_length, VNL);
+    
+      /* Source hack */
+      current += OSPF6_PREFIX_SIZE (prefix);
+
+      prefix = (struct ospf6_prefix *) current;
+      memset (&in6, 0, sizeof (in6));
+      memcpy (&in6, OSPF6_PREFIX_BODY (prefix),
+	  OSPF6_PREFIX_SPACE (prefix->prefix_length));
+      inet_ntop (AF_INET6, &in6, buf, sizeof (buf));
+      vty_out (vty, "     Source: %s/%d%s",
+	  buf, prefix->prefix_length, VNL);
     }
 
   return 0;
@@ -585,6 +596,14 @@ ospf6_link_lsa_originate (struct thread *thread)
       op->prefix_options = route->path.prefix_options;
       op->prefix_metric = htons (0);
       memcpy (OSPF6_PREFIX_BODY (op), &route->prefix.u.prefix6,
+              OSPF6_PREFIX_SPACE (op->prefix_length));
+      op = OSPF6_PREFIX_NEXT (op);
+    
+      /* Source hack */
+      op->prefix_length = route->source.prefixlen;
+      op->prefix_options = 0;
+      op->prefix_metric = htons (0);
+      memcpy (OSPF6_PREFIX_BODY (op), &route->source.u.prefix6,
               OSPF6_PREFIX_SPACE (op->prefix_length));
       op = OSPF6_PREFIX_NEXT (op);
     }
@@ -824,6 +843,10 @@ ospf6_ac_lsa_originate (struct thread *thread)
       ac_tlv_ag_p->prefix_length = aggregated_prefix->prefix.prefixlen;
       ac_tlv_ag_p->prefix = aggregated_prefix->prefix.u.prefix6;
 
+      /* Source hack */
+      ac_tlv_ag_p->source_length = aggregated_prefix->is_for.prefixlen;
+      ac_tlv_ag_p->source = aggregated_prefix->is_for.u.prefix6;
+
       current_tlv = ++ac_tlv_ag_p;
     }
   }
@@ -930,6 +953,17 @@ ospf6_intra_prefix_lsa_show (struct vty *vty, struct ospf6_lsa *lsa)
               OSPF6_PREFIX_SPACE (prefix->prefix_length));
       inet_ntop (AF_INET6, &in6, buf, sizeof (buf));
       vty_out (vty, "     Prefix: %s/%d%s",
+               buf, prefix->prefix_length, VNL);
+
+    /* Source hack */
+    current += OSPF6_PREFIX_SIZE (prefix);
+     
+    prefix = (struct ospf6_prefix *) current;
+    memset (&in6, 0, sizeof (in6));
+    memcpy (&in6, OSPF6_PREFIX_BODY (prefix),
+              OSPF6_PREFIX_SPACE (prefix->prefix_length));
+    inet_ntop (AF_INET6, &in6, buf, sizeof (buf));
+    vty_out (vty, "     Source: %s/%d%s",
                buf, prefix->prefix_length, VNL);
     }
 
@@ -1049,6 +1083,15 @@ ospf6_intra_prefix_lsa_originate_stub (struct thread *thread)
       memcpy (OSPF6_PREFIX_BODY (op), &route->prefix.u.prefix6,
               OSPF6_PREFIX_SPACE (op->prefix_length));
       op = OSPF6_PREFIX_NEXT (op);
+
+      /* Source Hack */
+      op->prefix_length = route->source.prefixlen;
+      op->prefix_options = 0;
+      op->prefix_metric = 0;
+      memcpy (OSPF6_PREFIX_BODY (op), &route->source.u.prefix6,
+              OSPF6_PREFIX_SPACE (op->prefix_length));
+      op = OSPF6_PREFIX_NEXT (op);
+
       prefix_num++;
     }
 
@@ -1210,6 +1253,16 @@ ospf6_intra_prefix_lsa_originate_transit (struct thread *thread)
           memcpy (&route->prefix.u.prefix6, OSPF6_PREFIX_BODY (op),
                   OSPF6_PREFIX_SPACE (op->prefix_length));
 
+	  /* Source Hack */
+	  current += OSPF6_PREFIX_SIZE (op);
+          op = (struct ospf6_prefix *) current;
+
+	  route->source.family = AF_INET6;
+          route->source.prefixlen = op->prefix_length;
+          memset (&route->source.u.prefix6, 0, sizeof (struct in6_addr));
+          memcpy (&route->source.u.prefix6, OSPF6_PREFIX_BODY (op),
+                  OSPF6_PREFIX_SPACE (op->prefix_length));
+
           route->path.origin.type = lsa->header->type;
           route->path.origin.id = lsa->header->id;
           route->path.origin.adv_router = lsa->header->adv_router;
@@ -1246,6 +1299,15 @@ ospf6_intra_prefix_lsa_originate_transit (struct thread *thread)
       memcpy (OSPF6_PREFIX_BODY (op), &route->prefix.u.prefix6,
               OSPF6_PREFIX_SPACE (op->prefix_length));
       op = OSPF6_PREFIX_NEXT (op);
+
+      /* Source Hack */
+      op->prefix_length = route->source.prefixlen;
+      op->prefix_options = 0;
+      op->prefix_metric = 0;
+      memcpy (OSPF6_PREFIX_BODY (op), &route->source.u.prefix6,
+              OSPF6_PREFIX_SPACE (op->prefix_length));
+      op = OSPF6_PREFIX_NEXT (op);
+
       prefix_num++;
     }
 
@@ -1347,6 +1409,15 @@ ospf6_intra_prefix_lsa_add (struct ospf6_lsa *lsa)
       route->prefix.family = AF_INET6;
       route->prefix.prefixlen = op->prefix_length;
       ospf6_prefix_in6_addr (&route->prefix.u.prefix6, op);
+      
+      /* Source hack */ 
+      current += OSPF6_PREFIX_SIZE (op);
+      
+      op = (struct ospf6_prefix *) current;
+      memset (&route->source, 0, sizeof (struct prefix));
+      route->source.family = AF_INET6;
+      route->source.prefixlen = op->prefix_length;
+      ospf6_prefix_in6_addr (&route->source.u.prefix6, op);
 
       route->type = OSPF6_DEST_TYPE_NETWORK;
       route->path.origin.type = lsa->header->type;

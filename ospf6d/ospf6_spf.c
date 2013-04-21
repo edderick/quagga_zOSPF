@@ -376,6 +376,13 @@ ospf6_spf_install (struct ospf6_vertex *v,
 
   route = ospf6_route_create ();
   memcpy (&route->prefix, &v->vertex_id, sizeof (struct prefix));
+
+  /* Source hack */
+  struct prefix source;
+  source = check_is_for (route->prefix);
+
+  route->source = source;
+
   route->type = OSPF6_DEST_TYPE_LINKSTATE;
   route->path.type = OSPF6_PATH_TYPE_INTRA;
   route->path.origin.type = v->lsa->header->type;

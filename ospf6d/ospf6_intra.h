@@ -162,13 +162,16 @@ struct ospf6_ac_tlv_router_hardware_fingerprint
 
 /* TBD-BY-ISNA-1 */
 #define OSPF6_AC_TLV_AGGREGATED_PREFIX	2U
-#define OSPF6_AC_TLV_AGGREGATED_PREFIX_LENGTH 20U
+#define OSPF6_AC_TLV_AGGREGATED_PREFIX_LENGTH 40U
 struct ospf6_ac_tlv_aggregated_prefix
 {
   struct ospf6_ac_tlv_header header;
   u_int8_t prefix_length;
   u_int8_t reserved[3];
   struct in6_addr prefix;
+  u_int8_t source_length;
+  u_int8_t reserveded[3];
+  struct in6_addr source;
 };
 
 /* TBD-BY-IANA-2 */

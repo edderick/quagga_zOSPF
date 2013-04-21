@@ -375,6 +375,13 @@ ospf6_interface_connected_route_update (struct interface *ifp)
       route = ospf6_route_create ();
       memcpy (&route->prefix, c->address, sizeof (struct prefix));
       apply_mask (&route->prefix);
+
+      /* Source Hack */
+      struct prefix source;
+      source = check_is_for (route->prefix);
+  
+      route->source = source;
+
       route->type = OSPF6_DEST_TYPE_NETWORK;
       route->path.area_id = oi->area->area_id;
       route->path.type = OSPF6_PATH_TYPE_INTRA;

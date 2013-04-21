@@ -389,7 +389,7 @@ ospf6_zebra_route_update (int type, struct ospf6_route *request)
   struct in6_addr **nexthops;
   unsigned int *ifindexes;
   int i, ret = 0;
-  struct prefix_ipv6 *dest;
+  struct prefix_ipv6 *dest, *src;
 
   if (IS_OSPF6_DEBUG_ZEBRA (SEND))
     {
@@ -496,11 +496,15 @@ ospf6_zebra_route_update (int type, struct ospf6_route *request)
                 request->path.cost_e2 : request->path.cost);
 
   dest = (struct prefix_ipv6 *) &request->prefix;
+  src = (struct prefix_ipv6 *) &request->source; 
   if (type == REM)
-    ret = zapi_ipv6_route (ZEBRA_IPV6_ROUTE_DELETE, zclient, dest, &api);
+  {
+    ret = zapi_ipv6_route (ZEBRA_IPV6_ROUTE_DELETE, zclient, dest, src, &api);
+  }
   else
-    ret = zapi_ipv6_route (ZEBRA_IPV6_ROUTE_ADD, zclient, dest, &api);
-
+  {
+    ret = zapi_ipv6_route (ZEBRA_IPV6_ROUTE_ADD, zclient, dest, src, &api);
+  }
   if (ret < 0)
     zlog_err ("zapi_ipv6_route() %s failed: %s",
               (type == REM ? "delete" : "add"), safe_strerror (errno));

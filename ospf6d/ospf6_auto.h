@@ -30,6 +30,7 @@ struct ospf6_router_hardware_fingerprint
 struct ospf6_aggregated_prefix 
 {
   struct prefix prefix;
+  struct prefix is_for;
   int source;
   u_int32_t advertising_router_id; 
 };
@@ -63,5 +64,7 @@ void ospf6_schedule_assign_prefixes (void);
 
 /* Mainly public to allow unit tests */
 void ospf6_assign_prefixes (void);
+
+struct prefix check_is_for (struct prefix);
 
 #endif /* OSPF6_AUTO_H */

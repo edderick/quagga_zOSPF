@@ -668,8 +668,8 @@ zapi_ipv4_route (u_char cmd, struct zclient *zclient, struct prefix_ipv4 *p,
 
 #ifdef HAVE_IPV6
 int
-zapi_ipv6_route (u_char cmd, struct zclient *zclient, struct prefix_ipv6 *p,
-	       struct zapi_ipv6 *api)
+zapi_ipv6_route (u_char cmd, struct zclient *zclient, struct prefix_ipv6 *dst,
+	       struct prefix_ipv6 *src, struct zapi_ipv6 *api)
 {
   int i;
   int psize;
@@ -688,9 +688,14 @@ zapi_ipv6_route (u_char cmd, struct zclient *zclient, struct prefix_ipv6 *p,
   stream_putw (s, api->safi);
   
   /* Put prefix information. */
-  psize = PSIZE (p->prefixlen);
-  stream_putc (s, p->prefixlen);
-  stream_write (s, (u_char *)&p->prefix, psize);
+  psize = PSIZE (dst->prefixlen);
+  stream_putc (s, dst->prefixlen);
+  stream_write (s, (u_char *)&dst->prefix, psize);
+
+  /* Put prefix information. */
+  psize = PSIZE (src->prefixlen);
+  stream_putc (s, src->prefixlen);
+  stream_write (s, (u_char *)&src->prefix, psize);
 
   /* Nexthop, ifindex, distance and metric information. */
   if (CHECK_FLAG (api->message, ZAPI_MESSAGE_NEXTHOP))
