@@ -43,7 +43,7 @@
 #define OK VT100_GREEN "OK" VT100_RESET
 #define FAILED VT100_RED "failed" VT100_RESET
 
-#define OWN_ID 5
+#define OWN_ID 50
 #define CONNECTED_IF_ID 0
 #define NOT_NEIGHBOR -1
 
@@ -142,16 +142,16 @@ struct test_case test_cases[] =
     3, 2,
     {
       {OWN_ID, 0, 0, {}, 0, {}, {}},
-      {1, 0, 1, {"fc00::/48"}, 1, {"fc00:0:0:1::/64"}, {CONNECTED_IF_ID}},
-      {2, 1, 0, {}, 1, {"fc00:0:0:2::/64"}, {CONNECTED_IF_ID}}
+      {OWN_ID + 1, 0, 1, {"fc00::/48"}, 1, {"fc00:0:0:1::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID + 2, 1, 0, {}, 1, {"fc00:0:0:2::/64"}, {CONNECTED_IF_ID}}
     }
   },
   {/* Test Case: */ 7,
     3, 2,
     {
       {OWN_ID, 0, 0, {}, 0, {}, {}},
-      {1, 0, 1, {"fc00::/48"}, 1, {"fc00:0:0:1::/64"}, {CONNECTED_IF_ID}},
-      {2, NOT_NEIGHBOR, 0, {}, 1, {"fc00:0:0:2::/64"}, {CONNECTED_IF_ID}}
+      {OWN_ID + 1, 0, 1, {"fc00::/48"}, 1, {"fc00:0:0:1::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID + 2, NOT_NEIGHBOR, 0, {}, 1, {"fc00:0:0:2::/64"}, {CONNECTED_IF_ID}}
     }
   },
   {/* Test Case: */ 8,
@@ -176,62 +176,94 @@ struct test_case test_cases[] =
     9, 1,
     {
       {OWN_ID, 0, 0, {}, 0, {}, {}},
-      {1, 0, 1, {"fc00::/48"}, 0, {}, {}},
-      {2, NOT_NEIGHBOR, 1, {"fc01::/48"}, 0, {}, {}},
-      {3, NOT_NEIGHBOR, 1, {"fc02::/48"}, 0, {}, {}},
-      {4, NOT_NEIGHBOR, 1, {"fc03::/48"}, 0, {}, {}},
-      {5, NOT_NEIGHBOR, 1, {"fc04::/48"}, 0, {}, {}},
-      {6, NOT_NEIGHBOR, 1, {"fc05::/48"}, 0, {}, {}},
-      {7, NOT_NEIGHBOR, 1, {"fc06::/48"}, 0, {}, {}},
-      {8, NOT_NEIGHBOR, 1, {"fc07::/48"}, 0, {}, {}},
+      {OWN_ID + 1, 0, 1, {"fc00::/48"}, 0, {}, {}},
+      {OWN_ID + 2, NOT_NEIGHBOR, 1, {"fc01::/48"}, 0, {}, {}},
+      {OWN_ID + 3, NOT_NEIGHBOR, 1, {"fc02::/48"}, 0, {}, {}},
+      {OWN_ID + 4, NOT_NEIGHBOR, 1, {"fc03::/48"}, 0, {}, {}},
+      {OWN_ID + 5, NOT_NEIGHBOR, 1, {"fc04::/48"}, 0, {}, {}},
+      {OWN_ID + 6, NOT_NEIGHBOR, 1, {"fc05::/48"}, 0, {}, {}},
+      {OWN_ID + 7, NOT_NEIGHBOR, 1, {"fc06::/48"}, 0, {}, {}},
+      {OWN_ID + 8, NOT_NEIGHBOR, 1, {"fc07::/48"}, 0, {}, {}},
     }
   },
   {/* Test Case: */ 12,
-    1, 0,
+    3, 1,
     {
       {OWN_ID, 0, 0, {}, 0, {}, {}},
+      {OWN_ID - 1, 0, 1, {"fc01::/48"}, 1, {"fc01:0:0:1::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID - 2, 0, 1, {"fc01::/48"}, 1, {"fc01:0:0:2::/64"}, {CONNECTED_IF_ID}},
     }
   },
  {/* Test Case: */ 13,
-    1, 0,
+    9, 1,
     {
       {OWN_ID, 0, 0, {}, 0, {}, {}},
+      {OWN_ID - 1, 0, 1, {"fc00::/48"}, 0, {}, {}},
+      {OWN_ID - 2, NOT_NEIGHBOR, 1, {"fc01::/48"}, 0, {}, {}},
+      {OWN_ID - 3, NOT_NEIGHBOR, 1, {"fc02::/48"}, 0, {}, {}},
+      {OWN_ID - 4, NOT_NEIGHBOR, 1, {"fc03::/48"}, 0, {}, {}},
+      {OWN_ID - 5, NOT_NEIGHBOR, 1, {"fc04::/48"}, 0, {}, {}},
+      {OWN_ID - 6, NOT_NEIGHBOR, 1, {"fc05::/48"}, 0, {}, {}},
+      {OWN_ID - 7, NOT_NEIGHBOR, 1, {"fc06::/48"}, 0, {}, {}},
+      {OWN_ID - 8, NOT_NEIGHBOR, 1, {"fc07::/48"}, 0, {}, {}},
     }
   },
   {/* Test Case: */ 14,
-    1, 0,
+    3, 2,
     {
-      {OWN_ID, 0, 0, {}, 0, {}, {}},
+      {OWN_ID, 0, 1, {"fc00::/48"}, 2, {"fc00:0:0:1::/64", "fc00:0:0:2::/64"}, {0, 1}},
+      {OWN_ID - 1, 0, 0, {}, 1, {"fc00:0:0:3::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID - 2, 1, 0, {}, 1, {"fc00:0:0:4::/64"}, {CONNECTED_IF_ID}},
     }
   },
   {/* Test Case: */ 15,
-    1, 0,
+    3, 2,
     {
-      {OWN_ID, 0, 0, {}, 0, {}, {}},
+      {OWN_ID, 0, 1, {"fc00::/48"}, 2, {"fc00:0:0:1::/64", "fc00:0:0:2::/64"}, {0, 1}},
+      {OWN_ID - 5, 0, 0, {}, 1, {"fc00:0:0:3::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID + 5, 1, 0, {}, 1, {"fc00:0:0:4::/64"}, {CONNECTED_IF_ID}},
     }
   },
  {/* Test Case: */ 16,
-    1, 0,
+    5, 5,
     {
-      {OWN_ID, 0, 0, {}, 0, {}, {}},
+      {OWN_ID, 0, 1, {"fc00::/48"}, 0, {}, {}},
+      {OWN_ID - 5, NOT_NEIGHBOR, 0, {}, 1, {"fc00:0:0:1::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID + 5, NOT_NEIGHBOR, 0, {}, 1, {"fc00:0:0:3::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID + 10, NOT_NEIGHBOR, 0, {}, 1, {"fc00:0:0:5::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID - 10, NOT_NEIGHBOR, 0, {}, 1, {"fc00:0:0:7::/64"}, {CONNECTED_IF_ID}}
     }
   },
   {/* Test Case: */ 17,
-    1, 0,
+    5, 1,
     {
-      {OWN_ID, 0, 0, {}, 0, {}, {}},
+      {OWN_ID, 0, 1, {"fc00::/48"}, 0, {}, {}},
+      {OWN_ID - 5, 0, 0, {}, 1, {"fc00:0:0:1::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID - 10, 0, 0, {}, 1, {"fc00:0:0:2::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID - 15, 0, 0, {}, 1, {"fc00:0:0:3::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID - 20, 0, 0, {}, 1, {"fc00:0:0:4::/64"}, {CONNECTED_IF_ID}}
     }
   },
  {/* Test Case: */ 18,
-    1, 0,
+    9, 2,
     {
-      {OWN_ID, 0, 0, {}, 0, {}, {}},
+      {OWN_ID, 0, 1, {"fc00::/48"}, 0, {}, {}},
+      {OWN_ID - 5, 0, 0, {}, 1, {"fc00:0:0:1::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID - 10, 0, 0, {}, 1, {"fc00:0:0:2::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID - 15, 0, 0, {}, 1, {"fc00:0:0:3::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID - 20, 0, 0, {}, 1, {"fc00:0:0:4::/64"}, {CONNECTED_IF_ID}}, 
+      {OWN_ID - 6, 1, 0, {}, 1, {"fc00:0:0:5::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID - 11, 1, 0, {}, 1, {"fc00:0:0:6::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID - 16, 1, 0, {}, 1, {"fc00:0:0:7::/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID - 21, 1, 0, {}, 1, {"fc00:0:0:8::/64"}, {CONNECTED_IF_ID}}
     }
   },
   {/* Test Case: */ 19,
-    1, 0,
+    3, 1,
     {
-      {OWN_ID, 0, 0, {}, 0, {}, {}},
+      {OWN_ID, 0, 1, {"fc00::/48"}, 0, {}, {}},
+      {OWN_ID - 3, 0, 0, {}, 1, {"fc00:0:0:1/64"}, {CONNECTED_IF_ID}},
+      {OWN_ID + 3, NOT_NEIGHBOR, 0, {}, 1, {"fc00:0:0:1/64"}, {CONNECTED_IF_ID}},
     }
   },
 };
@@ -321,7 +353,7 @@ struct expected_value expected_values[] =
     }
   },
   /* Expected Value for Testcase 8 */
-  {2, 2, 4, {2, 2}, 2, 
+  {2, 2, 4, {2, 2}, 6, 
     {
       {COND_AGG_PREFIX, "fc00::/48", 0},
       {COND_AGG_PREFIX, "fc01::/48", 1},
@@ -338,7 +370,7 @@ struct expected_value expected_values[] =
     }
   },
   /* Expected Value for Testcase 10 */
-  {1, 5, 5, {5}, 1, 
+  {1, 5, 5, {5}, 5, 
     {
       {COND_AGG_PREFIX, "fc00::/48", 0},
       {COND_AGG_PREFIX, "fc01::/48", 0},
@@ -348,49 +380,87 @@ struct expected_value expected_values[] =
     }
   },
   /* Expected Value for Testcase 11 */
-  {1, 8, 8, {8}, 1, 
+  {1, 8, 0, {0}, 8, 
     {
-      {COND_AGG_PREFIX, "fc00::/48", 0}
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_AGG_PREFIX, "fc01::/48", 0},
+      {COND_AGG_PREFIX, "fc02::/48", 0},
+      {COND_AGG_PREFIX, "fc03::/48", 0},
+      {COND_AGG_PREFIX, "fc04::/48", 0},
+      {COND_AGG_PREFIX, "fc05::/48", 0},
+      {COND_AGG_PREFIX, "fc06::/48", 0},
+      {COND_AGG_PREFIX, "fc07::/48", 0}
     }
   },
   /* Expected Value for Testcase 12 */
-  {0, 0, 0, {}, 0, 
+  {1, 2, 1, {1}, 1, 
     {
+      {COND_AGG_PREFIX, "fc01::/48", 0},
     }
   },
   /* Expected Value for Testcase 13 */
-  {0, 0, 0, {}, 0, 
+  {1, 8, 8, {8}, 8, 
     {
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_AGG_PREFIX, "fc01::/48", 0},
+      {COND_AGG_PREFIX, "fc02::/48", 0},
+      {COND_AGG_PREFIX, "fc03::/48", 0},
+      {COND_AGG_PREFIX, "fc04::/48", 0},
+      {COND_AGG_PREFIX, "fc05::/48", 0},
+      {COND_AGG_PREFIX, "fc06::/48", 0},
+      {COND_AGG_PREFIX, "fc07::/48", 0}
     }
   },
   /* Expected Value for Testcase 14 */
-  {0, 0, 0, {}, 0, 
+  {2, 1, 2, {1,1}, 4, 
     {
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:1::/64", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:2::/64", 1},
+      {COND_ASS_PREFIX_ISNT, "fc00:0:0:3::/64", 0},
+      {COND_ASS_PREFIX_ISNT, "fc00:0:0:4::/64", 1}
     }
   },
   /* Expected Value for Testcase 15 */
-  {0, 0, 0, {}, 0, 
+  {2, 1, 3, {1, 2}, 5, 
     {
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:1::/64", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:4::/64", 1},
+      {COND_ASS_PREFIX_ISNT, "fc00:0:0:3::/64", 0},
+      {COND_IS_DEPRECATING, "fc00:0:0:2::/64", 1}
     }
   },
   /* Expected Value for Testcase 16 */
-  {0, 0, 0, {}, 0, 
+  {5, 1, 5, {1,1,1,1,1}, 5, 
     {
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_ASS_PREFIX_ISNT, "fc00:0:0:1::/64", 1},
+      {COND_ASS_PREFIX_ISNT, "fc00:0:0:3::/64", 2},
+      {COND_ASS_PREFIX_ISNT, "fc00:0:0:5::/64", 3},
+      {COND_ASS_PREFIX_ISNT, "fc00:0:0:7::/64", 4}
     }
   },
   /* Expected Value for Testcase 17 */
-  {0, 0, 0, {}, 0, 
+  {1, 1, 1, {1}, 2, 
     {
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:1::/64", 0}
     }
   },
   /* Expected Value for Testcase 18 */
-  {0, 0, 0, {}, 0, 
+  {2, 1, 2, {1,1}, 3, 
     {
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:1::/64", 0},
+      {COND_ASS_PREFIX_IS, "fc00:0:0:5::/64", 1}
     }
   },
   /* Expected Value for Testcase 19 */
-  {0, 0, 0, {}, 0, 
+  {1, 1, 1, {1}, 0, 
     {
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_ASS_PREFIX_ISNT, "fc00:0:0:1::/64", 1}
     }
   }
 };
