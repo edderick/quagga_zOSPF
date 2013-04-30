@@ -47,7 +47,7 @@
 #define CONNECTED_IF_ID 0
 #define NOT_NEIGHBOR -1
 
-const int test_count = 9;
+const int test_count = 20;
 int fail_count;
 
 struct thread_master *master = NULL;
@@ -159,7 +159,81 @@ struct test_case test_cases[] =
     {
       {OWN_ID, 0, 2, {"fc00::/48", "fc01::/48"}, 0, {}, {}}
     }
-  }
+  },
+  {/* Test Case: */ 9,
+    1, 5,
+    {
+      {OWN_ID, 0, 1, {"fc00::/48"}, 0, {}, {}},
+    }
+  },
+  {/* Test Case: */ 10,
+    1, 1,
+    {
+      {OWN_ID, 0, 5, {"fc00::/48", "fc01::/48", "fc02::/48", "fc03::/48", "fc04::/48"}, 0, {}, {}},
+    }
+  },
+ {/* Test Case: */ 11,
+    9, 1,
+    {
+      {OWN_ID, 0, 0, {}, 0, {}, {}},
+      {1, 0, 1, {"fc00::/48"}, 0, {}, {}},
+      {2, NOT_NEIGHBOR, 1, {"fc01::/48"}, 0, {}, {}},
+      {3, NOT_NEIGHBOR, 1, {"fc02::/48"}, 0, {}, {}},
+      {4, NOT_NEIGHBOR, 1, {"fc03::/48"}, 0, {}, {}},
+      {5, NOT_NEIGHBOR, 1, {"fc04::/48"}, 0, {}, {}},
+      {6, NOT_NEIGHBOR, 1, {"fc05::/48"}, 0, {}, {}},
+      {7, NOT_NEIGHBOR, 1, {"fc06::/48"}, 0, {}, {}},
+      {8, NOT_NEIGHBOR, 1, {"fc07::/48"}, 0, {}, {}},
+    }
+  },
+  {/* Test Case: */ 12,
+    1, 0,
+    {
+      {OWN_ID, 0, 0, {}, 0, {}, {}},
+    }
+  },
+ {/* Test Case: */ 13,
+    1, 0,
+    {
+      {OWN_ID, 0, 0, {}, 0, {}, {}},
+    }
+  },
+  {/* Test Case: */ 14,
+    1, 0,
+    {
+      {OWN_ID, 0, 0, {}, 0, {}, {}},
+    }
+  },
+  {/* Test Case: */ 15,
+    1, 0,
+    {
+      {OWN_ID, 0, 0, {}, 0, {}, {}},
+    }
+  },
+ {/* Test Case: */ 16,
+    1, 0,
+    {
+      {OWN_ID, 0, 0, {}, 0, {}, {}},
+    }
+  },
+  {/* Test Case: */ 17,
+    1, 0,
+    {
+      {OWN_ID, 0, 0, {}, 0, {}, {}},
+    }
+  },
+ {/* Test Case: */ 18,
+    1, 0,
+    {
+      {OWN_ID, 0, 0, {}, 0, {}, {}},
+    }
+  },
+  {/* Test Case: */ 19,
+    1, 0,
+    {
+      {OWN_ID, 0, 0, {}, 0, {}, {}},
+    }
+  },
 };
 
 #define COND_AGG_PREFIX	      0
@@ -255,6 +329,68 @@ struct expected_value expected_values[] =
       {COND_IS_PENDING, "fc00::/48", 1}, 
       {COND_IS_PENDING, "fc01::/48", 0},
       {COND_IS_PENDING, "fc01::/48", 1}
+    }
+  },
+  /* Expected Value for Testcase 9 */
+  {5, 1, 5, {1,1,1,1,1}, 1, 
+    {
+      {COND_AGG_PREFIX, "fc00::/48", 0}
+    }
+  },
+  /* Expected Value for Testcase 10 */
+  {1, 5, 5, {5}, 1, 
+    {
+      {COND_AGG_PREFIX, "fc00::/48", 0},
+      {COND_AGG_PREFIX, "fc01::/48", 0},
+      {COND_AGG_PREFIX, "fc02::/48", 0},
+      {COND_AGG_PREFIX, "fc03::/48", 0},
+      {COND_AGG_PREFIX, "fc04::/48", 0}
+    }
+  },
+  /* Expected Value for Testcase 11 */
+  {1, 8, 8, {8}, 1, 
+    {
+      {COND_AGG_PREFIX, "fc00::/48", 0}
+    }
+  },
+  /* Expected Value for Testcase 12 */
+  {0, 0, 0, {}, 0, 
+    {
+    }
+  },
+  /* Expected Value for Testcase 13 */
+  {0, 0, 0, {}, 0, 
+    {
+    }
+  },
+  /* Expected Value for Testcase 14 */
+  {0, 0, 0, {}, 0, 
+    {
+    }
+  },
+  /* Expected Value for Testcase 15 */
+  {0, 0, 0, {}, 0, 
+    {
+    }
+  },
+  /* Expected Value for Testcase 16 */
+  {0, 0, 0, {}, 0, 
+    {
+    }
+  },
+  /* Expected Value for Testcase 17 */
+  {0, 0, 0, {}, 0, 
+    {
+    }
+  },
+  /* Expected Value for Testcase 18 */
+  {0, 0, 0, {}, 0, 
+    {
+    }
+  },
+  /* Expected Value for Testcase 19 */
+  {0, 0, 0, {}, 0, 
+    {
     }
   }
 };
