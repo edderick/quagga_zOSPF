@@ -1398,7 +1398,7 @@ exists_containing_prefix (struct ospf6_aggregated_prefix *aggregated_prefix,
   for (ALL_LIST_ELEMENTS (aggregated_prefix_list, node, nnode, current_prefix))
   {
     if (prefix_contains (&current_prefix->prefix, &aggregated_prefix->prefix) 
-	&& (current_prefix != aggregated_prefix)) 
+	&& (!prefix_same(current_prefix, aggregated_prefix))) 
     {
       return 1;
     }
