@@ -47,6 +47,8 @@
 #define CONNECTED_IF_ID 0
 #define NOT_NEIGHBOR -1
 
+#define MAX 10
+
 const int test_count = 20;
 int fail_count;
 
@@ -83,19 +85,19 @@ struct lsa
   int if_index;
 
   int num_of_aggregated_prefixes;
-  char aggregated_prefix[10][64];
+  char aggregated_prefix[MAX][64];
 
   int num_of_assigned_prefixes;
-  char assigned_prefix[10][64];
-  int ifindex[10];
+  char assigned_prefix[MAX][64];
+  int ifindex[MAX];
 };
 
 struct test_case 
 {
-  int number; /*TODO: May be possible to renove this */
+  int number; /*TODO: It may be possible to renove this */
   int num_of_lsas;
   int num_of_interfaces;
-  struct lsa lsa[10]; /* XXX */
+  struct lsa lsa[MAX];
 };
 
 struct test_case test_cases[] = 
@@ -286,10 +288,10 @@ struct expected_value
   int num_of_interfaces;
   int num_of_aggregated_prefixes;
   int num_of_assigned_prefixes;
-  int num_of_assigned_prefixes_on_interface[10];
+  int num_of_assigned_prefixes_on_interface[MAX];
   
   int num_of_conditions;
-  struct condition conditions[10];
+  struct condition conditions[MAX];
 };
 
 struct expected_value expected_values[] = 
@@ -501,10 +503,9 @@ create_ac_lsa (struct ospf6_area *oa,
   ac_tlv_rhwfp->header.type = htons (OSPF6_AC_TLV_ROUTER_HARDWARE_FINGERPRINT);
   ac_tlv_rhwfp->header.length = htons (OSPF6_AC_TLV_RHWFP_LENGTH);
 
-  /*TODO: FIX THIS */
+  /* Set RHWFP to 0, should change if testing RID resolution */
   memset (&ac_tlv_rhwfp->value, 0, 32); 
 
-  /* Step onto next tlv? */
   current_tlv = ++ac_tlv_rhwfp;
 
   /* Aggregated (allocated) prefixes */
@@ -599,7 +600,7 @@ static void create_neighbor (struct lsa *lsa)
   on->state = OSPF6_NEIGHBOR_FULL;
 }
 
-  static void 
+static void 
 handle_lsa (struct lsa *lsa, struct ospf6_area *backbone_area)
 {
   struct ospf6_lsa *new_lsa;
@@ -611,7 +612,7 @@ handle_lsa (struct lsa *lsa, struct ospf6_area *backbone_area)
   ospf6_lsdb_add (new_lsa, backbone_area->lsdb);
 }
 
-  static void 
+static void 
 setup (void)
 {
   struct ospf6_area *backbone_area;
@@ -629,7 +630,7 @@ setup (void)
   if_init ();
 }
 
-  static void 
+static void 
 reset (void)
 {
   struct ospf6_area *backbone_area;
@@ -962,6 +963,8 @@ do_test_case (struct test_case *test_case)
     printf ("Testcase %d: ", test_case->number);
     printf (FAILED "\n\n");
 
+    print_details ();
+
     fail_count ++;
   }	
   else 
@@ -974,7 +977,7 @@ do_test_case (struct test_case *test_case)
 }
 
 
-  int 
+int 
 main (int argc, int **argv)
 {
   int i;
