@@ -16,14 +16,14 @@
 #define OSPF6_NEW_PREFIX_ASSIGNMENT_SECONDS	    20 
 #define OSPF6_TERMINATE_PREFIX_ASSIGNMENT_SECONDS   240 
 
-#define R_HW_FP_BYTELEN 32
+#define R_HW_FP_BYTELEN 64 
 #define R_HW_FP_CMP(D,S)   memcmp ((D), (S), R_HW_FP_BYTELEN)
 
 #define ASSOCIATED_PREFIXES_MAX_LEN 5
 
 struct ospf6_router_hardware_fingerprint
 {
-  u_int8_t byte[32];
+  u_int8_t byte[R_HW_FP_BYTELEN];
 };
 
 /* Prefix that has been given to OSPF6d to distribute */

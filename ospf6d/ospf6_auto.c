@@ -86,12 +86,12 @@ ospf6_generate_router_hardware_fingerprint (void)
     if (if_is_up (current_interface) && !if_is_loopback(current_interface))
     {
       u_int64_t hw_addr;
-      u_int32_t hw_addr_hash;
+      //u_int32_t hw_addr_hash;
       hw_addr = hw_addr_to_long (current_interface->hw_addr, 
-	  current_interface->hw_addr_len);
-      hw_addr_hash = hash_hw_addr (hw_addr);
-      memcpy (&fingerprint.byte[offset], &hw_addr_hash, 4);
-      offset += 4;
+		current_interface->hw_addr_len);
+      //hw_addr_hash = hash_hw_addr (hw_addr);
+      memcpy (&fingerprint.byte[offset], &hw_addr, 8);
+      offset += 8;
     }
 #endif /* HAVE_STRUCT_SOCKADDR_DL */
   }
