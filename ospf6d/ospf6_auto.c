@@ -43,7 +43,7 @@ hw_addr_to_long (const u_char *hw_addr, const int hw_addr_len)
     memcpy (result, hw_addr, 3);
     result[3] = 0xFF;
     result[4] = 0xFE;
-    memcpy (result + 5, hw_addr, 3);
+    memcpy (result + 5, hw_addr + 3, 3);
 
     /* flip EUI 64 bit; */
     result[0] = result[0] ^ 0x20;
