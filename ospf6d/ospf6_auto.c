@@ -281,7 +281,7 @@ ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header)
 	(struct ospf6_ac_tlv_router_hardware_fingerprint *) ac_tlv_header;
 
       /* Check fingerprints, check length first since its variable */
-      if (ac_tlv_header->length == 32
+      if (ac_tlv_header->length == R_HW_FP_BYTELEN
 	  && R_HW_FP_CMP (&ac_tlv_rhfp->value, &fingerprint) == 0)
       {
 	/* Matching fingerprints implies true self origination*/
@@ -290,7 +290,7 @@ ospf6_check_hw_fingerprint (struct ospf6_lsa_header *lsa_header)
       else 
       {
 	/* If their fingerprint is smaller */
-	if (ac_tlv_header->length <= 32 
+	if (ac_tlv_header->length <= R_HW_FP_BYTELEN
 	    && R_HW_FP_CMP (&ac_tlv_rhfp->value, &fingerprint) < 0)
 	{
 	  zlog_warn ("Other router must change Router-ID");
