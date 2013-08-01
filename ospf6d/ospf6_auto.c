@@ -154,7 +154,7 @@ ospf6_set_router_id (u_int32_t rid)
     {
       if (if_is_up (current_interface) && !if_is_loopback(current_interface))
       {
-	create_ospf6_interface (current_interface->name);
+		  create_ospf6_interface (current_interface->name);
       }
     }
   }
@@ -227,12 +227,14 @@ ospf6_check_router_id (struct ospf6_header *oh,
       struct ospf6_interface *inf;
       for (ALL_LIST_ELEMENTS (area->if_list, ifnode, ifnnode, inf))
       {
-	/* Multiple interfaces on same link? */
-	/* Draft doesn't specify _HOW_ this should be done */
-	if (IPV6_ADDR_SAME (&src, inf->linklocal_addr))
-	{
-	  return;
-	}
+		/* Multiple interfaces on same link? */
+		/* Draft doesn't specify _HOW_ this should be done */
+		if (inf->linklocal_addr != null) {
+			if (IPV6_ADDR_SAME (&src, inf->linklocal_addr))
+			{
+				return;
+			}
+		}
       }
     }
 
