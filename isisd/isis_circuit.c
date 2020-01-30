@@ -120,7 +120,7 @@ isis_circuit_configure (struct isis_circuit *circuit, struct isis_area *area)
 {
   assert (area);
   circuit->area = area;
-
+dfgsdfgsdfgsfgs
   /*
    * The level for the circuit is same as for the area, unless configured
    * otherwise.
@@ -130,13 +130,13 @@ isis_circuit_configure (struct isis_circuit *circuit, struct isis_area *area)
                circuit->interface->name, circuit->is_type,
                circuit->area->area_tag, area->is_type);
 
-  /*
+  /*dfgsdfgsdfg
    * Add the circuit into area
    */
   listnode_add (area->circuit_list, circuit);
 
   circuit->idx = flags_get_index (&area->flags);
-
+sdfgsdfgsdfgsdfgs
   return;
 }
 
@@ -167,21 +167,14 @@ circuit_lookup_by_ifp (struct interface *ifp, struct list *list)
     if (circuit->interface == ifp)
       {
         assert (ifp->info == circuit);
-        return circuit;
-      }
-
-  return NULL;
-}
-
-struct isis_circuit *
+        return circuit;fg
+      }fg
 circuit_scan_by_ifp (struct interface *ifp)
 {
   struct isis_area *area;
-  struct listnode *node;
-  struct isis_circuit *circuit;
-
-  if (ifp->info)
-    return (struct isis_circuit *)ifp->info;
+  struct listnode *node;sdfs
+  if (ifp->info)g
+    return (struct isis_circuit *)ifp->info;sdfg
 
   if (isis->area_list)
     {
